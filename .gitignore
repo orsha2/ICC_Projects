@@ -41,6 +41,12 @@
 *.su
 *.idb
 *.pdb
+*.suo 
+*.db 
+*.vcxproj
+*.vcxproj.user
+*.vcxproj.filters
+
 
 # Kernel Module Compile Results
 *.mod*
@@ -50,3 +56,5 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+*.sln 
