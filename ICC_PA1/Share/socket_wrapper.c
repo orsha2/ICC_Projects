@@ -15,21 +15,11 @@ typedef enum _bind_status
 
 // constants ------------------------------------------------------------------
 
-static const char* LOCAL_HOST				   = "127.0.0.1";
-static const char* MSG_CONNECTED_TO_SERVER     = "Connected to server on %s:%d\n"; 
-const char* MSG_CONNECTION_TO_SERVER_FAILED    = "Failed connecting to server on %s:%d.\nChoose what to do next:\n1. Try to reconnect\n2. Exit\n";
-
-static const int  MAX_QUEUE_PENDING_CONNETIONS = 10;
-
-const int DEFAULT_WAIT_TIME         = 15000;   // 15 sec
-const int GAME_START_WAIT_TIME      = 30000;   // 30 sec 
-const int PLAYER_DECISION_WAIT_TIME = 600000;  // 10 minutes 
+static const char* LOCAL_HOST = "127.0.0.1"; 
 
 // function declarations ------------------------------------------------------
 
 error_code_t bind_to_port(SOCKET socket, int socket_port); 
-error_code_t listen_to_port_connections(SOCKET main_socket);
-error_code_t connect_to_server(SOCKET my_socket, char* server_ip, int server_port);
 struct sockaddr_in initialize_sockaddr(const char* str_ip, int port);
 
 error_code_t send_message_with_certain_length(SOCKET communication_socket, char* msg_buffer, int msg_size);
@@ -158,44 +148,6 @@ error_code_t bind_to_port(SOCKET my_socket, int socket_port)
 	return status;
 }
 
-/// listen_to_port_connections
-/// inputs:  socket , server_ip , server_port
-/// outputs: error code
-/// summary:  Connection to server. 
-///           If there was a SOCKET_ERROR - print a message and break.
-///           Otherwise, check if the server is disconnected -
-///           if so return the appropriate error type ( SOCKET_CONNECT_FAILED )
-/// 
-error_code_t connect_to_server(SOCKET my_socket, char* server_ip, int server_port)
-{
-	error_code_t status = SUCCESS_CODE;
-
-	struct sockaddr_in service;
-
-	int current_client_choice = CONNECT_TO_SERVER, connect_status;
-
-	service = initialize_sockaddr(server_ip, server_port);
-
-	while (current_client_choice == CONNECT_TO_SERVER)
-	{
-		connect_status = connect(my_socket, (struct sockaddr*)&service, sizeof(service));
-
-		if (connect_status != SOCKET_ERROR)
-		{
-			printf(MSG_CONNECTED_TO_SERVER, server_ip, server_port);
-			break;
-		}
-		else
-		{
-			printf(MSG_CONNECTION_TO_SERVER_FAILED, server_ip, server_port);
-			scanf_s(" %d", &current_client_choice);
-
-			if (current_client_choice == EXIT_SERVER)
-				return SOCKET_CONNECT_FAILED;
-		}
-	}
-	return status;
-}
 
 /// initialize_sockaddr
 /// inputs:  str_ip , port
@@ -332,26 +284,6 @@ error_code_t receive_message_with_certain_length(SOCKET communication_socket, ch
 		msg_segment_buffer += bytes_recv;
 	}
 	return status;
-}
-
-/// shutdown_and_close_connection
-/// inputs:  socket  
-/// outputs: - 
-/// summary: perform gracefully close on my_socket
-///
-void shutdown_and_close_connection(SOCKET my_socket)
-{
-	error_code_t status = SUCCESS_CODE;
-	char msg_buffer;
-
-	shutdown(my_socket, SD_SEND);
-
-	while (status != SOCKET_RECV_FAILED && status != SOCKET_CONNECTION_CLOSED &&
-		status != SOCKET_CONNECTION_RESET && status != SOCKET_RECV_TIMEOUT)
-	{
-		status = receive_message_with_certain_length(my_socket, &msg_buffer, sizeof(msg_buffer));
-	}
-	closesocket(my_socket);
 }
 
 /// change_buffer_size

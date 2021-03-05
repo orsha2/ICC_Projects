@@ -23,18 +23,7 @@ typedef enum _socket_blocking_mode {
 	NON_BLOCKING_MODE
 } socket_blocking_mode;
 
-typedef enum _client_choice {
-	CONNECT_TO_SERVER = 1,
-	EXIT_SERVER
-}client_choice;
-
 // constants ------------------------------------------------------------------
-
-extern const char* MSG_CONNECTION_TO_SERVER_FAILED; 
-
-extern const int PLAYER_DECISION_WAIT_TIME;
-extern const int GAME_START_WAIT_TIME;
-extern const int DEFAULT_WAIT_TIME;
 
 // function declarations ------------------------------------------------------
 
@@ -48,8 +37,6 @@ error_code_t receive_message_from(SOCKET communication_socket, char** p_received
 
 error_code_t set_socket_blocking_mode(SOCKET my_socket, socket_blocking_mode blocking_mode); 
 error_code_t set_socket_operation_timeout(SOCKET my_socket, int operation_type, int timeout); 
-
-void shutdown_and_close_connection(SOCKET my_socket);
 
 
 #endif // SOCKET_WRAPPER_H 

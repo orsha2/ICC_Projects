@@ -5,31 +5,30 @@
 
 #include "error_mgr.h"
 #include "socket_wrapper.h" 
-#include "server_client_messages_handler.h"
-#include "client_game_handler.h"
 
 // enum -----------------------------------------------------------------------
 
-typedef enum _client_args_index {
-    SERVER_IP_INDEX = 1,
-    SERVER_PORT_INDEX,
+typedef enum _sender_args_index {
+    CHANNEL_IP_INDEX = 1,
+    CHANNEL_PORT_INDEX,
     FILE_NAME_INDEX,
     SENDER_ARGS_NUM
-}client_args_index;
+}sender_args_index;
 
 // constants ------------------------------------------------------------------
 
-static const char* FEEDBACK_MSG = "received: %d bytes\nwritten: %d bytes\ndetected & corrected %d errors";
+#define FILE_BUFFER_SIZE 88 
+static const char* FEEDBACK_MSG = "received: %d bytes\nwritten: %d bytes\ndetected & corrected %d errorsn\n";
 
 // global variables -----------------------------------------------------------
 
-static char client_name[MAX_NAME_SIZE + 1] = { 0 };
 
 // function declarations ------------------------------------------------------
 
 error_code_t handle_client_communication(SOCKET client_socket);
 // error_code_t set_socket_timeout_parameter(SOCKET client_socket, message* p_client_message);
-
+bool read_bytes_from_file(FILE** p_p_file, char* file_buffer, int* p_bytes_counter); 
+void write_bytes_to_file(FILE** p_p_file, char* file_buffer, int bytes_counter); 
 
 // function implementations ---------------------------------------------------
 
@@ -42,8 +41,8 @@ int main(int argc, char* argv[])
     if (status != SUCCESS_CODE)
         return status;
 
-    char* channel_ip = argv[SERVER_IP_INDEX];
-    int channel_port = atoi(argv[SERVER_PORT_INDEX]);
+    char* channel_ip = argv[CHANNEL_IP_INDEX];
+    int channel_port = atoi(argv[CHANNEL_PORT_INDEX]);
     char* file_name = argv[FILE_NAME_INDEX];
    
     SOCKET sender_socket = INVALID_SOCKET;
@@ -86,25 +85,56 @@ error_code_t transfer_file(SOCKET sender_socket, char* dest_ip, int dest_port, c
 {
     error_code_t status = SUCCESS_CODE;
 
-    FILE* p_file = fopen(file_name, "rb");
+    FILE* p_file; 
+    fopen_s(&p_file, file_name, "rb");
 
     status = check_file_opening(p_file, __FILE__, __LINE__, __func__);
 
     if (status != SUCCESS_CODE)
         return status;
 
-    while (end_of_file(p_file) == false) 
+
+
+    //---------------------------------
+    FILE* p_file_write; 
+
+    fopen_s(&p_file_write, "output.bin", "wb");
+
+    status = check_file_opening(p_file_write, __FILE__, __LINE__, __func__);
+
+    if (status != SUCCESS_CODE)
+        return status;
+    //---------------------------------
+
+
+
+    char file_buffer[FILE_BUFFER_SIZE];
+    int bytes_counter = 0; 
+    bool is_end_of_file = false;
+
+    while (is_end_of_file == false)
     {
-        read_bits_from_file();
 
-        encode_bits();
+        is_end_of_file = read_bytes_from_file(&p_file, file_buffer, &bytes_counter);
 
-        send_bits();
+        //encode_bits();
+        printf("bytes_counter = %d  \n", bytes_counter);
+
+        for (int i = 0; i < bytes_counter; i++)
+        {
+   //         printf("%c", file_buffer[i]);
+        }
+        printf("\n\n\n");
+
+        // send_bits(file_buffer, p_bytes_counter);
+
+        write_bytes_to_file(&p_file_write, file_buffer, bytes_counter); 
+        bytes_counter = 0;
     }
 
     if (p_file != NULL)
         fclose(p_file);
-
+    fclose(p_file_write); 
     return status;
 }
 
@@ -113,15 +143,33 @@ error_code_t  recv_feedback(SOCKET sender_socket, int * p_received_bytes, int* p
     error_code_t status = SUCCESS_CODE;
     char* recv_buffer = NULL;
 
-    status = recv_message(sender_socket, &recv_buffer);
+   // status = recv_message(sender_socket, &recv_buffer);
 
     if (status != SUCCESS_CODE)
         return status;
 
-    parse_feedback(recv_buffer, p_received_bytes, p_written_bytes, p_detected_errors_num, p_corrected_errors_num); 
+  //  parse_feedback(recv_buffer, p_received_bytes, p_written_bytes, p_detected_errors_num, p_corrected_errors_num); 
     // sscanf 
 
     return status;
+}
+
+
+bool read_bytes_from_file(FILE** p_p_file, char* file_buffer, int* p_bytes_counter)
+{
+    *p_bytes_counter = fread(file_buffer,sizeof(char) , FILE_BUFFER_SIZE, *p_p_file);
+
+    if (*p_bytes_counter == FILE_BUFFER_SIZE)
+        return false;
+
+    return true;
+}
+
+//error_code_t send_bits(char* file_buffer, int* p_bytes_counter)
+
+void write_bytes_to_file(FILE** p_p_file, char* file_buffer, int bytes_counter)
+{
+   fwrite(file_buffer, sizeof(char), bytes_counter, *p_p_file);
 }
 
 
