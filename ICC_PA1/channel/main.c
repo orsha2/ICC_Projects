@@ -37,16 +37,21 @@ int main(int argc, char* argv[])
         return status;
 
     int channel_port = atoi(argv[CHANNEL_PORT_INDEX]);
-    char* reciver_ip = argv[RECEIVER_IP_INDEX];
-    int reciver_port = atoi(argv[RECEIVER_PORT_INDEX]);
+    char* receiver_ip = argv[RECEIVER_IP_INDEX];
+    int receiver_port = atoi(argv[RECEIVER_PORT_INDEX]);
 
-    int bit_flip_probability= atoi(argv[BIT_FLIP_PROBABILITY_INDEX]);
+    int bit_flip_probability = atoi(argv[BIT_FLIP_PROBABILITY_INDEX]);
     int random_seed = atoi(argv[RANDOM_SEED_INDEX]);
-
 
     SOCKET channel_socket = INVALID_SOCKET;
 
-    int transferred_bytes, flipped_bits;
+    int transferred_bytes = 0, flipped_bits = 0;
+
+    char* received_msg_buffer = NULL;
+    int msg_length = 0;
+
+    char sender_ip[STR_IP_SIZE + 1];
+    int sender_port;
 
     status = initialize_winsock();
 
@@ -58,6 +63,35 @@ int main(int argc, char* argv[])
     if (status != SUCCESS_CODE)
         goto channel_clean_up;
 
+    status = bind_to_port(channel_socket, channel_port);
+
+    if (status != SUCCESS_CODE)
+        goto channel_clean_up;
+
+    while (true) {
+        status = receive_message_from(channel_socket, &received_msg_buffer, &msg_length, sender_ip, &sender_port);
+
+        if (status != SUCCESS_CODE)
+            goto channel_clean_up;
+
+        Sleep(1);
+
+        // flip_bits(received_msg_buffer, bit_flip_probability, random_seed); 
+
+        status = send_message_to(channel_socket, received_msg_buffer, msg_length, receiver_ip, receiver_port);
+
+        //-----------------
+        if (strcmp(received_msg_buffer, "exit") == 0)
+            break;
+        //-----------------
+
+        if (status != SUCCESS_CODE)
+            goto channel_clean_up;
+
+      //  printf("%s", received_msg_buffer);
+    }
+    printf("\n%s\n%d\n", sender_ip, sender_port);
+
     //status = transfer_file(channel_socket, channel_ip, channel_port, file_name);
 
     //if (status != SUCCESS_CODE)
@@ -68,13 +102,38 @@ int main(int argc, char* argv[])
     //if (status != SUCCESS_CODE)
     //    goto sender_clean_up;
 
-    fprintf(stderr, FEEDBACK_MSG, received_bytes, written_bytes, detected_errors_num, corrected_errors_num);
+   // fprintf(stderr, FEEDBACK_MSG, sender_ip, receiver_ip, transferred_bytes, flipped_bits);
 
 channel_clean_up:
 
     if (channel_socket != INVALID_SOCKET)
         closesocket(channel_socket);
 
+    if (received_msg_buffer != NULL)
+        free(received_msg_buffer); 
+
     deinitialize_winsock();
     return (int)status;
 }
+
+
+/*
+
+0 <= num <= 2^16-1
+num < n --> flip bit
+
+--------------------------
+
+get 16  (2 bytes) --> and(16 (2 bytes)) 
+do it n times --> or --> bit is 1 with probability n/(2^16)
+
+*/
+
+
+
+
+
+
+
+
+

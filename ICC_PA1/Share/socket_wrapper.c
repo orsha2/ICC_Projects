@@ -19,11 +19,11 @@ static const char* LOCAL_HOST = "127.0.0.1";
 
 // function declarations ------------------------------------------------------
 
-error_code_t bind_to_port(SOCKET socket, int socket_port); 
 struct sockaddr_in initialize_sockaddr(const char* str_ip, int port);
+void get_ip_and_port_from_sockaddr(struct sockaddr_in* p_source_sockaddr, char* source_ip, int* p_source_port); 
 
-error_code_t send_message_with_certain_length(SOCKET communication_socket, char* msg_buffer, int msg_size);
-error_code_t receive_message_with_certain_length(SOCKET communication_socket, char* msg_segment_buffer, int bytes_to_recv);
+error_code_t send_message_with_certain_length(SOCKET communication_socket, char* msg_buffer, int msg_size, struct sockaddr_in* p_dest_sockaddr);
+error_code_t receive_message_with_certain_length(SOCKET communication_socket, char* msg_segment_buffer, int bytes_to_recv, struct sockaddr_in* p_source_sockaddr); 
 
 error_code_t change_buffer_size(char** p_buffer, int new_size);
 
@@ -165,32 +165,45 @@ struct sockaddr_in initialize_sockaddr(const char* str_ip, int port)
 	return service;
 }
 
-/// send_message
-/// inputs:  communication_socket , msg_buffer, msg_size
-/// outputs: error_code 
-/// summary: Sends a message and checks if it was successful 
+/// get_ip_and_port_from_sockaddr
+/// inputs:  p_source_sockaddr, p_source_ip,  p_source_port 
+/// outputs: -
+/// summary: Auxiliary function - gets ip and port from sockaddr 
 ///
-error_code_t send_message_to(SOCKET communication_socket, char* msg_buffer, int msg_size, char* dest_ip, int dst_port)
+void get_ip_and_port_from_sockaddr(struct sockaddr_in* p_source_sockaddr, char* source_ip, int* p_source_port)
+{
+	inet_ntop(AF_INET, (void*)&(p_source_sockaddr->sin_addr), source_ip, STR_IP_SIZE + 1);
+	*p_source_port = htons(p_source_sockaddr->sin_port);
+}
+
+/// send_message
+/// inputs:  communication_socket , msg_buffer, msg_size, dest_ip,  dest_port
+/// outputs: error_code 
+/// summary: Sends a message to destination and checks if it was successful 
+///
+error_code_t send_message_to(SOCKET communication_socket, char* msg_buffer, int msg_size, char* dest_ip, int dest_port)
 {
 	error_code_t status = SUCCESS_CODE;
-	
-	status = send_message_with_certain_length(communication_socket, (char*)(&msg_size), sizeof(msg_size));
+
+	struct sockaddr_in dest_sockaddr = initialize_sockaddr(dest_ip, dest_port);
+
+	status = send_message_with_certain_length(communication_socket, (char*)(&msg_size), sizeof(msg_size), &dest_sockaddr);
 
 	if (status != SUCCESS_CODE)
 		return status;
 
-	status = send_message_with_certain_length(communication_socket, msg_buffer, msg_size);
+	status = send_message_with_certain_length(communication_socket, msg_buffer, msg_size, &dest_sockaddr);
 
 	return status;
 }
 
 /// send_message_with_certain_length
-/// inputs:  communication_socket , msg_buffer, msg_size
+/// inputs:  communication_socket , msg_buffer, msg_size, p_dest_sockaddr
 /// outputs: error_code 
-/// summary: Sends a message of a certain size - each time sends a part of it. 
+/// summary: Sends a message of a certain size to a certain destination - each time sends a part of it. 
 ///          Checks whether it was successful 
 ///
-error_code_t send_message_with_certain_length(SOCKET communication_socket, char* msg_buffer, int msg_size)
+error_code_t send_message_with_certain_length(SOCKET communication_socket, char* msg_buffer, int msg_size, struct sockaddr_in *p_dest_sockaddr)
 {
 	error_code_t status = SUCCESS_CODE;
 	int total_bytes_sent = 0;
@@ -198,7 +211,7 @@ error_code_t send_message_with_certain_length(SOCKET communication_socket, char*
 
 	while (total_bytes_sent < msg_size)
 	{
-		bytes_sent = send(communication_socket, msg_buffer, msg_size - total_bytes_sent, 0);
+		bytes_sent = sendto(communication_socket, msg_buffer, msg_size - total_bytes_sent, 0, (struct sockaddr*)p_dest_sockaddr, sizeof(*p_dest_sockaddr)); 
 
 		if (bytes_sent == SOCKET_ERROR)
 			return SOCKET_SEND_FAILED;
@@ -209,41 +222,48 @@ error_code_t send_message_with_certain_length(SOCKET communication_socket, char*
 	return status;
 }
 
+
 /// receive_message
 /// inputs:  communication_socket ,  received_msg_buffer, p_received_msg_length
 /// outputs: error_code 
 /// summary: receive a message and checks if it was successful 
 ///
-error_code_t receive_message_from(SOCKET communication_socket, char** p_received_msg_buffer, int* p_received_msg_length)
+error_code_t receive_message_from(SOCKET communication_socket, char** p_received_msg_buffer, int* p_received_msg_length, char* source_ip, int* p_source_port)
 {
 	error_code_t status = SUCCESS_CODE;
+
+	struct sockaddr_in source_sockaddr;
 
 	char* received_msg_buffer = *p_received_msg_buffer;
 	int msg_length = 0;
 
-	status = receive_message_with_certain_length(communication_socket, (char*)&msg_length, sizeof(msg_length));
+	status = receive_message_with_certain_length(communication_socket, (char*)&msg_length, sizeof(msg_length), &source_sockaddr);
 
 	if (status != SUCCESS_CODE)
 		goto recv_msg_end;
 
-	status = change_buffer_size(&received_msg_buffer, msg_length + 1); 
+	status = change_buffer_size(&received_msg_buffer, msg_length + 1);
 
 	if (status != SUCCESS_CODE)
 		goto recv_msg_end;
 
-	status = receive_message_with_certain_length(communication_socket, received_msg_buffer, msg_length);
+	status = receive_message_with_certain_length(communication_socket, received_msg_buffer, msg_length, &source_sockaddr);
 
 	if (status != SUCCESS_CODE)
 		goto recv_msg_end;
 
 	received_msg_buffer[msg_length] = '\0';
-	
+
+	if(source_ip != NULL && p_source_port != NULL)
+		get_ip_and_port_from_sockaddr(&source_sockaddr, source_ip, p_source_port);
+
 recv_msg_end:
 	*p_received_msg_buffer = received_msg_buffer;
 	*p_received_msg_length = msg_length;
 
-	return status; 
+	return status;
 }
+
 
 /// send_message_with_certain_length
 /// inputs:  communication_socket , msg_buffer, msg_size
@@ -251,17 +271,17 @@ recv_msg_end:
 /// summary: receive a message of a certain size - each time sends a part of it. 
 ///          Checks whether it was successful 
 ///
-error_code_t receive_message_with_certain_length(SOCKET communication_socket, char* msg_segment_buffer, int bytes_to_recv)
+error_code_t receive_message_with_certain_length(SOCKET communication_socket, char* msg_segment_buffer, int bytes_to_recv, struct sockaddr_in *p_source_sockaddr)
 {
 	error_code_t status = SUCCESS_CODE;
 	int total_bytes_recv = 0;
 	int bytes_recv = 0;
 	int recv_error = 0;
+	int sockaddr_size = sizeof(struct sockaddr);
 
 	while (total_bytes_recv < bytes_to_recv)
 	{
-		bytes_recv = recv(communication_socket, msg_segment_buffer, bytes_to_recv - total_bytes_recv, 0);
-
+		bytes_recv = recvfrom(communication_socket, msg_segment_buffer, bytes_to_recv - total_bytes_recv, 0, (struct sockaddr*)p_source_sockaddr, &sockaddr_size);
 		if (bytes_recv == SOCKET_ERROR)
 		{
 			recv_error = WSAGetLastError();
@@ -269,8 +289,7 @@ error_code_t receive_message_with_certain_length(SOCKET communication_socket, ch
 			if (recv_error == WSAETIMEDOUT)
 				return SOCKET_RECV_TIMEOUT;
 
-			if (recv_error == WSAECONNRESET || recv_error == WSAENOTCONN ||
-				recv_error == WSAENOTSOCK   || recv_error != WSAECONNABORTED)
+			if (recv_error == WSAECONNRESET || recv_error == WSAENOTSOCK)
 				return SOCKET_CONNECTION_RESET;
 
 			print_error(SOCKET_RECV_FAILED, __FILE__, __LINE__, __func__);

@@ -24,6 +24,7 @@ typedef enum _socket_blocking_mode {
 } socket_blocking_mode;
 
 // constants ------------------------------------------------------------------
+#define STR_IP_SIZE 15
 
 // function declarations ------------------------------------------------------
 
@@ -31,9 +32,10 @@ error_code_t initialize_winsock();
 error_code_t deinitialize_winsock();
 
 error_code_t initialize_socket(SOCKET* p_socket); 
+error_code_t bind_to_port(SOCKET my_socket, int socket_port); 
 
 error_code_t send_message_to(SOCKET communication_socket, char* msg_buffer, int msg_size, char* dest_ip, int dest_port); 
-error_code_t receive_message_from(SOCKET communication_socket, char** p_received_msg_buffer, int* p_received_msg_length);
+error_code_t receive_message_from(SOCKET communication_socket, char** p_received_msg_buffer, int* p_received_msg_length, char* source_ip, int* p_source_port); 
 
 error_code_t set_socket_blocking_mode(SOCKET my_socket, socket_blocking_mode blocking_mode); 
 error_code_t set_socket_operation_timeout(SOCKET my_socket, int operation_type, int timeout); 

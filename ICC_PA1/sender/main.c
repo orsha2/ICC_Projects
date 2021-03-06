@@ -28,14 +28,12 @@ static const char* FEEDBACK_MSG = "received: %d bytes\nwritten: %d bytes\ndetect
 error_code_t handle_client_communication(SOCKET client_socket);
 // error_code_t set_socket_timeout_parameter(SOCKET client_socket, message* p_client_message);
 bool read_bytes_from_file(FILE** p_p_file, char* file_buffer, int* p_bytes_counter); 
-void write_bytes_to_file(FILE** p_p_file, char* file_buffer, int bytes_counter); 
 
 // function implementations ---------------------------------------------------
 
 int main(int argc, char* argv[])
 {
     error_code_t status = SUCCESS_CODE;
-
     status = check_args_num(argc, SENDER_ARGS_NUM);
 
     if (status != SUCCESS_CODE)
@@ -70,7 +68,7 @@ int main(int argc, char* argv[])
     if (status != SUCCESS_CODE)
         goto sender_clean_up;
 
-    fprintf(stderr, FEEDBACK_MSG, received_bytes, written_bytes, detected_errors_num, corrected_errors_num); 
+    // fprintf(stderr, FEEDBACK_MSG, received_bytes, written_bytes, detected_errors_num, corrected_errors_num); 
 
 sender_clean_up:
 
@@ -93,48 +91,31 @@ error_code_t transfer_file(SOCKET sender_socket, char* dest_ip, int dest_port, c
     if (status != SUCCESS_CODE)
         return status;
 
-
-
-    //---------------------------------
-    FILE* p_file_write; 
-
-    fopen_s(&p_file_write, "output.bin", "wb");
-
-    status = check_file_opening(p_file_write, __FILE__, __LINE__, __func__);
-
-    if (status != SUCCESS_CODE)
-        return status;
-    //---------------------------------
-
-
-
     char file_buffer[FILE_BUFFER_SIZE];
     int bytes_counter = 0; 
     bool is_end_of_file = false;
 
     while (is_end_of_file == false)
     {
-
         is_end_of_file = read_bytes_from_file(&p_file, file_buffer, &bytes_counter);
 
-        //encode_bits();
-        printf("bytes_counter = %d  \n", bytes_counter);
+        //encode_bits(); 
 
-        for (int i = 0; i < bytes_counter; i++)
-        {
-   //         printf("%c", file_buffer[i]);
-        }
-        printf("\n\n\n");
+        Sleep(2);
 
-        // send_bits(file_buffer, p_bytes_counter);
+        status = send_message_to(sender_socket, file_buffer, bytes_counter, dest_ip, dest_port);
 
-        write_bytes_to_file(&p_file_write, file_buffer, bytes_counter); 
+        if (status != SUCCESS_CODE)
+            goto transfer_file_clean_up;
+
         bytes_counter = 0;
     }
+    status = send_message_to(sender_socket, "exit", 4, dest_ip, dest_port);
 
+transfer_file_clean_up:
     if (p_file != NULL)
         fclose(p_file);
-    fclose(p_file_write); 
+
     return status;
 }
 
@@ -166,11 +147,6 @@ bool read_bytes_from_file(FILE** p_p_file, char* file_buffer, int* p_bytes_count
 }
 
 //error_code_t send_bits(char* file_buffer, int* p_bytes_counter)
-
-void write_bytes_to_file(FILE** p_p_file, char* file_buffer, int bytes_counter)
-{
-   fwrite(file_buffer, sizeof(char), bytes_counter, *p_p_file);
-}
 
 
 /*
