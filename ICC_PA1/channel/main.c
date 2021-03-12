@@ -129,6 +129,22 @@ do it n times --> or --> bit is 1 with probability n/(2^16)
 
 */
 
+void insert_noise(uint32 *data, double probability, int *flipped)
+{
+    int mask = 0x1, i;
+    float rand_num = 0;
+    
+    for (i = 0; i < BYTE_SIZE; i++)
+    {
+        rand_num = (float)rand()/RAND_MAX;
+        if (rand_num < probability)
+        {
+            (*data) ^= mask;
+            (*flipped)++;
+        }
+        mask <<= 1;
+    }
+}
 
 
 
