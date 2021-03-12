@@ -74,7 +74,7 @@ int main(int argc, char* argv[])
         if (status != SUCCESS_CODE)
             goto channel_clean_up;
 
-        Sleep(1);
+        Sleep(100);
 
         // flip_bits(received_msg_buffer, bit_flip_probability, random_seed); 
 
@@ -128,8 +128,8 @@ get 16  (2 bytes) --> and(16 (2 bytes))
 do it n times --> or --> bit is 1 with probability n/(2^16)
 
 */
-
-void insert_noise(uint32 *data, double probability, int *flipped)
+/*
+void insert_noise(int *data, double probability, int *flipped)
 {
     int mask = 0x1, i;
     float rand_num = 0;
@@ -145,7 +145,7 @@ void insert_noise(uint32 *data, double probability, int *flipped)
         mask <<= 1;
     }
 }
-
+*/
 
 
 

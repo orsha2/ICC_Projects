@@ -5,7 +5,7 @@
 
 #include "error_mgr.h"
 #include "socket_wrapper.h" 
-
+#include "hamming_code_handler.h"
 // enum -----------------------------------------------------------------------
 
 typedef enum _sender_args_index {
@@ -52,7 +52,7 @@ int main(int argc, char* argv[])
 
     if (status != SUCCESS_CODE)
         return status;
-
+    
     status = initialize_socket(&sender_socket);
 
     if (status != SUCCESS_CODE)
@@ -99,9 +99,9 @@ error_code_t transfer_file(SOCKET sender_socket, char* dest_ip, int dest_port, c
     {
         is_end_of_file = read_bytes_from_file(&p_file, file_buffer, &bytes_counter);
 
-        //encode_bits(); 
-
-        Sleep(2);
+        encode_data(NULL, bytes_counter, NULL);
+        exit(0);
+        Sleep(200);
 
         status = send_message_to(sender_socket, file_buffer, bytes_counter, dest_ip, dest_port);
 
@@ -119,7 +119,7 @@ transfer_file_clean_up:
     return status;
 }
 
-error_code_t  recv_feedback(SOCKET sender_socket, int * p_received_bytes, int* p_written_bytes, int* p_detected_errors_num, int* p_corrected_errors_num)
+error_code_t  recv_feedback(SOCKET sender_socket, int* p_received_bytes, int* p_written_bytes, int* p_detected_errors_num, int* p_corrected_errors_num)
 {
     error_code_t status = SUCCESS_CODE;
     char* recv_buffer = NULL;
