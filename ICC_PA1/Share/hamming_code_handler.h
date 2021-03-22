@@ -1,37 +1,25 @@
 #ifndef HAMMING_CODE_HANDLER_H
 #define HAMMING_CODE_HANDLER_H
 
-#define HAMMING_ENCODED_BLOCK 15
-#define HAMMING_DATA_BLOCK 11
-#define DATA_MASK 0x07FF // 11 bit mask 
+// constants ------------------------------------------------------------------
 
-#define ENCODED_DATA_BUFFER_SIZE HAMMING_ENCODED_BLOCK * 100
-#define DATA_BUFFER_SIZE		 HAMMING_DATA_BLOCK * 100
+#define HAMMING_ENCODED_BLOCK_SIZE 15
+#define HAMMING_DATA_BLOCK_SIZE 11
 
-///***********************************************************************************/
-///*
-//	Function: Function to encode a 26 bit data block using Hamming code.
-//	Input:	unsigned int data_block - An unsinged 26 bit integer.
-//	Output: An unsigned 31 bit integer encoded using Hamming.
-//*/
-///***********************************************************************************/
+#define ENCODED_DATA_BUFFER_SIZE HAMMING_ENCODED_BLOCK_SIZE * 100
+#define DATA_BUFFER_SIZE		 HAMMING_DATA_BLOCK_SIZE * 100
 
+// function declarations ------------------------------------------------------
 
-void encode_data(char* data_buffer, int data_buffer_size, char* encoded_data_buffer); 
+void encode_data(char* data_buffer, unsigned int data_buffer_size, char* encoded_data_buffer, unsigned int encoded_data_buffer_size);
+
+unsigned int decode_data(char* encoded_data_buffer, unsigned int encoded_data_buffer_size, char* data_buffer, unsigned int data_buffer_size);
 
 
 
-///***********************************************************************************/
-///*
-//	Function: Function to decode a 31 bit block encoded using Hamming and
-//			  retrieve it's data. If a fix is made function increases counter by 1.
-//	Input:	unsigned int coded_data_block - An unsinged 31 bit integer.
-//			int *corrections - Pointer to corrections counter.
-//	Output: An unsigned 26 bit integer decoded using Hamming.
-//*/
-///***********************************************************************************/
 
-int decode_data(int coded_data_block, int *corrections);
-
+// ----------------------- REMOVE THIS ---------------------------
+void RUN_HAMMING_TEST();
+// ----------------------- REMOVE THIS ---------------------------
 
 #endif // HAMMING_CODE_HANDLER_H

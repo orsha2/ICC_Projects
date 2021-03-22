@@ -17,22 +17,33 @@ typedef enum _sender_args_index {
 
 // constants ------------------------------------------------------------------
 
-#define FILE_BUFFER_SIZE 88 
 static const char* FEEDBACK_MSG = "received: %d bytes\nwritten: %d bytes\ndetected & corrected %d errorsn\n";
 
 // global variables -----------------------------------------------------------
 
 
 // function declarations ------------------------------------------------------
-
-error_code_t handle_client_communication(SOCKET client_socket);
-// error_code_t set_socket_timeout_parameter(SOCKET client_socket, message* p_client_message);
+error_code_t transfer_file(SOCKET sender_socket, char* dest_ip, int dest_port, char* file_name);
 bool read_bytes_from_file(FILE** p_p_file, char* file_buffer, int* p_bytes_counter); 
+error_code_t  recv_feedback(SOCKET sender_socket, int* p_received_bytes, int* p_written_bytes, int* p_detected_errors_num, int* p_corrected_errors_num);
 
 // function implementations ---------------------------------------------------
 
 int main(int argc, char* argv[])
 {
+    // ----------------------- REMOVE THIS ---------------------------
+    RUN_HAMMING_TEST();
+    exit(0); 
+    // ----------------------- REMOVE THIS ---------------------------
+
+
+
+
+
+
+
+
+
     error_code_t status = SUCCESS_CODE;
     status = check_args_num(argc, SENDER_ARGS_NUM);
 
@@ -91,19 +102,21 @@ error_code_t transfer_file(SOCKET sender_socket, char* dest_ip, int dest_port, c
     if (status != SUCCESS_CODE)
         return status;
 
-    char file_buffer[FILE_BUFFER_SIZE];
+    char data_buffer[DATA_BUFFER_SIZE];
+    char encoded_data_buffer[ENCODED_DATA_BUFFER_SIZE];
+
     int bytes_counter = 0; 
     bool is_end_of_file = false;
 
     while (is_end_of_file == false)
     {
-        is_end_of_file = read_bytes_from_file(&p_file, file_buffer, &bytes_counter);
+        is_end_of_file = read_bytes_from_file(&p_file, data_buffer, &bytes_counter);
 
-        encode_data(NULL, bytes_counter, NULL);
-        exit(0);
+        encode_data(data_buffer, bytes_counter, encoded_data_buffer, ENCODED_DATA_BUFFER_SIZE);
+        
         Sleep(200);
 
-        status = send_message_to(sender_socket, file_buffer, bytes_counter, dest_ip, dest_port);
+        status = send_message_to(sender_socket, data_buffer, bytes_counter, dest_ip, dest_port);
 
         if (status != SUCCESS_CODE)
             goto transfer_file_clean_up;
@@ -136,11 +149,11 @@ error_code_t  recv_feedback(SOCKET sender_socket, int* p_received_bytes, int* p_
 }
 
 
-bool read_bytes_from_file(FILE** p_p_file, char* file_buffer, int* p_bytes_counter)
+bool read_bytes_from_file(FILE** p_p_file, char* data_buffer, int* p_bytes_counter)
 {
-    *p_bytes_counter = fread(file_buffer,sizeof(char) , FILE_BUFFER_SIZE, *p_p_file);
+    *p_bytes_counter = fread(data_buffer, sizeof(char), DATA_BUFFER_SIZE, *p_p_file);
 
-    if (*p_bytes_counter == FILE_BUFFER_SIZE)
+    if (*p_bytes_counter == DATA_BUFFER_SIZE)
         return false;
 
     return true;
