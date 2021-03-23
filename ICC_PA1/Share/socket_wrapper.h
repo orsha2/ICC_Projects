@@ -40,5 +40,6 @@ error_code_t receive_message_from(SOCKET communication_socket, char** p_received
 error_code_t set_socket_blocking_mode(SOCKET my_socket, socket_blocking_mode blocking_mode); 
 error_code_t set_socket_operation_timeout(SOCKET my_socket, int operation_type, int timeout); 
 
+error_code_t change_buffer_size(char** p_buffer, int new_size); 
 
 #endif // SOCKET_WRAPPER_H 

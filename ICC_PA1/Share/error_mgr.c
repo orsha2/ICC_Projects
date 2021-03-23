@@ -66,9 +66,9 @@ const char* ERR_MSG[] = {
 /// 
 void print_error(error_code_t error_code, const char* file, int line, const char* func_name)
 {
-	printf("ERROR: %s\n", ERR_MSG[error_code]);
-	printf("File: %s\n", file);
-	printf("Line: %d, Function: %s\n", line, func_name);
+	fprintf(stderr, "ERROR: %s\n", ERR_MSG[error_code]);
+	fprintf(stderr, "File: %s\n", file);
+	fprintf(stderr, "Line: %d, Function: %s\n", line, func_name);
 }
 
 /// check_args_num

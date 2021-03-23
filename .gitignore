@@ -64,3 +64,4 @@ dkms.conf
 *.opendb
 *.db-shm
 *.db-wal
+*.enc

@@ -23,7 +23,7 @@ typedef enum _channel_args_index {
 static const char* FEEDBACK_MSG = "sender: %s\nreceiver: %s\n%d bytes, flipped %d bits";
 
 // function declarations ------------------------------------------------------
-
+error_code_t transfer_messages(SOCKET channel_socket, char* receiver_ip, int receiver_port, char* sender_ip, int* p_sender_port); 
 
 // function implementations ---------------------------------------------------
 
@@ -47,9 +47,6 @@ int main(int argc, char* argv[])
 
     int transferred_bytes = 0, flipped_bits = 0;
 
-    char* received_msg_buffer = NULL;
-    int msg_length = 0;
-
     char sender_ip[STR_IP_SIZE + 1];
     int sender_port;
 
@@ -68,28 +65,12 @@ int main(int argc, char* argv[])
     if (status != SUCCESS_CODE)
         goto channel_clean_up;
 
-    while (true) {
-        status = receive_message_from(channel_socket, &received_msg_buffer, &msg_length, sender_ip, &sender_port);
+    status = transfer_messages(channel_socket, receiver_ip,  receiver_port, sender_ip, &sender_port);
 
         if (status != SUCCESS_CODE)
             goto channel_clean_up;
 
-        Sleep(100);
 
-        // flip_bits(received_msg_buffer, bit_flip_probability, random_seed); 
-
-        status = send_message_to(channel_socket, received_msg_buffer, msg_length, receiver_ip, receiver_port);
-
-        //-----------------
-        if (strcmp(received_msg_buffer, "exit") == 0)
-            break;
-        //-----------------
-
-        if (status != SUCCESS_CODE)
-            goto channel_clean_up;
-
-      //  printf("%s", received_msg_buffer);
-    }
     printf("\n%s\n%d\n", sender_ip, sender_port);
 
     //status = transfer_file(channel_socket, channel_ip, channel_port, file_name);
@@ -109,13 +90,47 @@ channel_clean_up:
     if (channel_socket != INVALID_SOCKET)
         closesocket(channel_socket);
 
-    if (received_msg_buffer != NULL)
-        free(received_msg_buffer); 
 
     deinitialize_winsock();
     return (int)status;
 }
 
+error_code_t transfer_messages(SOCKET channel_socket, char* receiver_ip, int receiver_port, char* sender_ip, int* p_sender_port)
+{
+
+    error_code_t status = SUCCESS_CODE; 
+    char* received_msg_buffer = NULL;
+    int msg_length = 0;
+
+    while (true)
+    {
+        status = receive_message_from(channel_socket, &received_msg_buffer, &msg_length, sender_ip, p_sender_port);
+
+        if (status != SUCCESS_CODE)
+            break;
+
+        Sleep(30);
+
+        // flip_bits(received_msg_buffer, bit_flip_probability, random_seed); 
+
+        //-----------------
+        if (strcmp(received_msg_buffer, "exit") == 0)
+            break;
+        //-----------------
+        status = send_message_to(channel_socket, received_msg_buffer, msg_length, receiver_ip, receiver_port);
+
+
+        if (status != SUCCESS_CODE)
+            break;
+
+        //  printf("%s", received_msg_buffer);
+    }
+
+    if (received_msg_buffer != NULL)
+        free(received_msg_buffer);
+
+    return status; 
+}
 
 /*
 

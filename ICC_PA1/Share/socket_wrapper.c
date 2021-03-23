@@ -25,8 +25,6 @@ void get_ip_and_port_from_sockaddr(struct sockaddr_in* p_source_sockaddr, char* 
 error_code_t send_message_with_certain_length(SOCKET communication_socket, char* msg_buffer, int msg_size, struct sockaddr_in* p_dest_sockaddr);
 error_code_t receive_message_with_certain_length(SOCKET communication_socket, char* msg_segment_buffer, int bytes_to_recv, struct sockaddr_in* p_source_sockaddr); 
 
-error_code_t change_buffer_size(char** p_buffer, int new_size);
-
 error_code_t check_socket_creation_result(SOCKET new_socket, const char* file, int line, const char* func_name);
 error_code_t check_socket_result(int socket_result, error_code_t error_code, const char* file, int line, const char* func_name);
 error_code_t check_winsock_result(int winsock_result, error_code_t error_code, const char* file, int line, const char* func_name); 
@@ -284,7 +282,7 @@ error_code_t receive_message_with_certain_length(SOCKET communication_socket, ch
 		bytes_recv = recvfrom(communication_socket, msg_segment_buffer, bytes_to_recv - total_bytes_recv, 0, (struct sockaddr*)p_source_sockaddr, &sockaddr_size);
 		if (bytes_recv == SOCKET_ERROR)
 		{
-			recv_error = WSAGetLastError();
+			recv_error = WSAGetLastError(); 
 
 			if (recv_error == WSAETIMEDOUT)
 				return SOCKET_RECV_TIMEOUT;

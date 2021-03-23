@@ -150,6 +150,23 @@ void RUN_HAMMING_TEST()
 	printf(str3);
 
 
+	
+	char str5[100] = "abc 213 ewf wef r rehg th\n";
+	char str6[100] = { 0 };
+	char str7[100] = { 0 };
+
+	encode_data(str5, 100, str6, 100);	
+	decode_data(str6, 100, str7, 100);
+	printf("\n---\n");
+
+	printf(str5);
+	printf(str6);
+	printf("\n");
+
+	printf(str7);
+
+
+
 	//					--- END TESTS ---
 }
 
@@ -175,10 +192,8 @@ void encode_data(char* data_buffer, unsigned int data_buffer_size, char* encoded
 	for (unsigned int block_index = 0; block_index < data_blocks_num; block_index++)
 	{
 		current_data_block = get_block(data_buffer, data_buffer_size, block_index, HAMMING_DATA_BLOCK_SIZE);
-		print_binary(current_data_block, 15); printf("<--\n");
 
 		current_encoded_block = encode_block(current_data_block);
-		print_binary(current_encoded_block, 15); printf("<--\n");
 
 		set_block(encoded_data_buffer, encoded_data_buffer_size, block_index, HAMMING_ENCODED_BLOCK_SIZE, current_encoded_block);
 	}
@@ -202,7 +217,7 @@ unsigned int decode_data(char* encoded_data_buffer, unsigned int encoded_data_bu
 			
 		current_data_block = decode_block(current_encoded_block);
 
-		set_block(data_buffer, data_buffer_size, block_index, HAMMING_DATA_BLOCK_SIZE, current_encoded_block);
+		set_block(data_buffer, data_buffer_size, block_index, HAMMING_DATA_BLOCK_SIZE, current_data_block);
 	}
 
 	return errors_num;
