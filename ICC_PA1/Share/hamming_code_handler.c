@@ -290,7 +290,7 @@ bool check_and_correct_errors(short* p_encoded_data_block)
 		
 	}
 
-	is_error = (error_pos != 0) && (is_square(error_pos) == false); 
+	is_error = (error_pos != 0); // && (is_square(error_pos) == false); 
 
 	// flip bit that caused the error 
 	if (error_pos != 0)

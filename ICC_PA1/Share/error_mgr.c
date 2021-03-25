@@ -17,24 +17,11 @@ const char* ERR_MSG[] = {
 		"Mem  - Memory allocation error.",
 
 		"File - open failed.",
-
 		"File - reading failed.",
-	    "File - delete failed.",
 		"File - writing failed.",
-		"File - SetFilePointer failed",
-		"File - Set End of File failed.",
 
-		"Thread - creation failed.",
-		"Thread - GetExitCodeThread failed.",
-		"Threads - Timeout while waiting for threads to return",
-		"Threads - Termination failed",
+		"String - parsing failed. "
 
-		"Semaphore - creation failed.",
-		"Semaphore - release failed.",
-		"Mutex - creation failed.",
-		"Mutex - release failed.",
-
-		"Handle - Timeout while waiting for object.",
 		"Handle - CloseHandle failed",
 
 		"Winsock - initialization falied.", 
@@ -49,12 +36,7 @@ const char* ERR_MSG[] = {
 		"Socket - setting blocking mode failed.",
 		"Socket - setting operation timeout failed.",
 		"Socket - connection closed.",
-		"Socket - connection reset.",
-
-		"Server - no free connections."
-		
-		"Client - chose to disconnect from server."
-		"Client - connection to server denied."
+		"Socket - connection reset."
 };
 
 // function implementations ---------------------------------------------------

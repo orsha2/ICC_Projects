@@ -20,10 +20,15 @@ typedef enum _channel_args_index {
 
 // constants ------------------------------------------------------------------
 
-static const char* FEEDBACK_MSG = "sender: %s\nreceiver: %s\n%d bytes, flipped %d bits";
+#define BITS_IN_BYTE 8
+static const char* SUMMARY_MSG = "sender: %s\nreceiver: %s\n%d bytes, flipped %d bits";
 
 // function declarations ------------------------------------------------------
-error_code_t transfer_messages(SOCKET channel_socket, char* receiver_ip, int receiver_port, char* sender_ip, int* p_sender_port); 
+
+error_code_t transfer_messages(SOCKET channel_socket, char* receiver_ip, int receiver_port, char* sender_ip, int* p_sender_port, int* p_transferred_bytes, int bit_flip_probability, int* p_flipped_bits_num); 
+int insert_noise(char* data, int data_length, int bit_flip_probability);
+short get_random_short();
+
 
 // function implementations ---------------------------------------------------
 
@@ -43,12 +48,14 @@ int main(int argc, char* argv[])
     int bit_flip_probability = atoi(argv[BIT_FLIP_PROBABILITY_INDEX]);
     int random_seed = atoi(argv[RANDOM_SEED_INDEX]);
 
+    srand(random_seed);
+
     SOCKET channel_socket = INVALID_SOCKET;
 
-    int transferred_bytes = 0, flipped_bits = 0;
+    int transferred_bytes = 0, flipped_bits_num = 0;
 
-    char sender_ip[STR_IP_SIZE + 1];
-    int sender_port;
+    char sender_ip[STR_IP_SIZE + 1] = "";
+    int sender_port = 0;
 
     status = initialize_winsock();
 
@@ -65,71 +72,74 @@ int main(int argc, char* argv[])
     if (status != SUCCESS_CODE)
         goto channel_clean_up;
 
-    status = transfer_messages(channel_socket, receiver_ip,  receiver_port, sender_ip, &sender_port);
+    status = transfer_messages(channel_socket, receiver_ip, receiver_port, sender_ip, &sender_port, &transferred_bytes, bit_flip_probability, &flipped_bits_num);
 
-        if (status != SUCCESS_CODE)
-            goto channel_clean_up;
-
-
-    printf("\n%s\n%d\n", sender_ip, sender_port);
-
-    //status = transfer_file(channel_socket, channel_ip, channel_port, file_name);
-
-    //if (status != SUCCESS_CODE)
-    //    goto sender_clean_up;
-
-    //status = recv_feedback(channel_socket, &received_bytes, &written_bytes, &detected_errors_num, &corrected_errors_num);
-
-    //if (status != SUCCESS_CODE)
-    //    goto sender_clean_up;
-
-   // fprintf(stderr, FEEDBACK_MSG, sender_ip, receiver_ip, transferred_bytes, flipped_bits);
+    fprintf(stderr, SUMMARY_MSG, sender_ip, receiver_ip, transferred_bytes, flipped_bits_num);
 
 channel_clean_up:
 
     if (channel_socket != INVALID_SOCKET)
         closesocket(channel_socket);
 
-
+    Sleep(10000);
     deinitialize_winsock();
     return (int)status;
 }
 
-error_code_t transfer_messages(SOCKET channel_socket, char* receiver_ip, int receiver_port, char* sender_ip, int* p_sender_port)
+error_code_t transfer_messages(SOCKET channel_socket, char* receiver_ip, int receiver_port, char* sender_ip, int* p_sender_port, int* p_transferred_bytes, int bit_flip_probability, int* p_flipped_bits_num)
 {
 
-    error_code_t status = SUCCESS_CODE; 
+    error_code_t status = SUCCESS_CODE;
+    char source_ip[STR_IP_SIZE] = "";
+    int source_port = 0;
+
     char* received_msg_buffer = NULL;
     int msg_length = 0;
 
     while (true)
     {
-        status = receive_message_from(channel_socket, &received_msg_buffer, &msg_length, sender_ip, p_sender_port);
+        status = receive_message_from(channel_socket, &received_msg_buffer, &msg_length, source_ip, &source_port);
 
         if (status != SUCCESS_CODE)
-            break;
+            goto transfer_messages_exit;
 
-        Sleep(30);
+        Sleep(UDP_SYNC_DELAY);
 
-        // flip_bits(received_msg_buffer, bit_flip_probability, random_seed); 
+        // check if received message from receiver 
+        if (strcmp(source_ip, receiver_ip) == 0 && source_port == receiver_port)
+        {
+            // transfer message to sender and return 
+            status = send_message_to(channel_socket, received_msg_buffer, msg_length, sender_ip, *p_sender_port);
+            goto transfer_messages_exit;
+        }
+        else
+        {
 
-        //-----------------
-        if (strcmp(received_msg_buffer, "exit") == 0)
-            break;
-        //-----------------
+            // message is from sender, store its address
+            if (strlen(sender_ip) == 0 && (*p_sender_port) == 0)
+            {
+                strcpy_s(sender_ip, STR_IP_SIZE + 1, source_ip);
+                *p_sender_port = source_port;
+            }
+        }
+
+
+        (*p_flipped_bits_num) += insert_noise(received_msg_buffer, msg_length, bit_flip_probability);
+
         status = send_message_to(channel_socket, received_msg_buffer, msg_length, receiver_ip, receiver_port);
 
+        (*p_transferred_bytes) += msg_length;
 
         if (status != SUCCESS_CODE)
-            break;
-
-        //  printf("%s", received_msg_buffer);
+            goto transfer_messages_exit;
     }
+
+transfer_messages_exit:
 
     if (received_msg_buffer != NULL)
         free(received_msg_buffer);
 
-    return status; 
+    return status;
 }
 
 /*
@@ -143,26 +153,38 @@ get 16  (2 bytes) --> and(16 (2 bytes))
 do it n times --> or --> bit is 1 with probability n/(2^16)
 
 */
-/*
-void insert_noise(int *data, double probability, int *flipped)
+
+int insert_noise(char* data, int data_length, int bit_flip_probability)
 {
-    int mask = 0x1, i;
-    float rand_num = 0;
-    
-    for (i = 0; i < BYTE_SIZE; i++)
+    int cell_index, bit;
+    unsigned int random_short = 0;
+    int flipped_bits_num = 0;
+
+    for (cell_index = 0; cell_index < data_length; cell_index++)
     {
-        rand_num = (float)rand()/RAND_MAX;
-        if (rand_num < probability)
+        for (bit = 0; bit < BITS_IN_BYTE; bit++)
         {
-            (*data) ^= mask;
-            (*flipped)++;
+            random_short = get_random_short();
+
+            if (random_short < bit_flip_probability)
+            {
+                data[cell_index] ^= 1 << bit;
+                flipped_bits_num++;
+            }
         }
-        mask <<= 1;
     }
+
+    return flipped_bits_num;
 }
-*/
 
 
+unsigned short get_random_short()
+{
+    unsigned short random_bit = rand() % 2;
+    unsigned short random_15_bits = rand() % (1 << 15);
+
+    return ((random_15_bits << 1) | random_bit); 
+}
 
 
 

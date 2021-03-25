@@ -24,7 +24,9 @@ typedef enum _socket_blocking_mode {
 } socket_blocking_mode;
 
 // constants ------------------------------------------------------------------
+
 #define STR_IP_SIZE 15
+#define UDP_SYNC_DELAY 5
 
 // function declarations ------------------------------------------------------
 

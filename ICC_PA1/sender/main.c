@@ -18,7 +18,7 @@ typedef enum _sender_args_index {
 
 // constants ------------------------------------------------------------------
 
-static const char* FEEDBACK_MSG = "received: %d bytes\nwritten: %d bytes\ndetected & corrected %d errorsn\n";
+static const char* FEEDBACK_MSG = "received: %d bytes\nwritten: %d bytes\ndetected & corrected %d errors\n";
 
 // global variables -----------------------------------------------------------
 
@@ -26,7 +26,7 @@ static const char* FEEDBACK_MSG = "received: %d bytes\nwritten: %d bytes\ndetect
 // function declarations ------------------------------------------------------
 error_code_t transfer_file(SOCKET sender_socket, char* dest_ip, int dest_port, char* file_name);
 bool read_bytes_from_file(FILE** p_p_file, char* data_buffer, int bytes_to_read, int* p_bytes_counter); 
-error_code_t  recv_feedback(SOCKET sender_socket, int* p_received_bytes, int* p_written_bytes, int* p_detected_errors_num, int* p_corrected_errors_num);
+error_code_t recv_feedback(SOCKET sender_socket, int* p_received_bytes, int* p_written_bytes, int* p_detected_and_corrected_errors_num); 
 
 // function implementations ---------------------------------------------------
 
@@ -52,7 +52,7 @@ int main(int argc, char* argv[])
     SOCKET sender_socket = INVALID_SOCKET;
 
     int received_bytes, written_bytes;
-    int detected_errors_num, corrected_errors_num;
+    int detected_and_corrected_errors_num;
 
     status = initialize_winsock();
 
@@ -69,12 +69,14 @@ int main(int argc, char* argv[])
     if (status != SUCCESS_CODE)
         goto sender_clean_up;
 
-    status = recv_feedback(sender_socket, &received_bytes, &written_bytes, &detected_errors_num, &corrected_errors_num);
+    printf("done\n"); 
+
+    status = recv_feedback(sender_socket, &received_bytes, &written_bytes, &detected_and_corrected_errors_num);
 
     if (status != SUCCESS_CODE)
         goto sender_clean_up;
 
-    // fprintf(stderr, FEEDBACK_MSG, received_bytes, written_bytes, detected_errors_num, corrected_errors_num); 
+     fprintf(stderr, FEEDBACK_MSG, received_bytes, written_bytes, detected_and_corrected_errors_num);
 
 sender_clean_up:
 
@@ -82,6 +84,8 @@ sender_clean_up:
         closesocket(sender_socket);
 
     deinitialize_winsock();
+
+    Sleep(100000); 
     return (int)status;
 }
 
@@ -112,7 +116,7 @@ error_code_t transfer_file(SOCKET sender_socket, char* dest_ip, int dest_port, c
 
         encode_data(data_buffer, bytes_counter, encoded_data_buffer, encoded_data_buffer_size);
         
-        Sleep(60);
+        Sleep(UDP_SYNC_DELAY * 2);
 
         status = send_message_to(sender_socket, encoded_data_buffer, encoded_data_buffer_size, dest_ip, dest_port);
 
@@ -121,27 +125,35 @@ error_code_t transfer_file(SOCKET sender_socket, char* dest_ip, int dest_port, c
 
         bytes_counter = 0;
     }
-    status = send_message_to(sender_socket, "exit", 4, dest_ip, dest_port);
 
 transfer_file_clean_up:
     if (p_file != NULL)
         fclose(p_file);
-
+    
     return status;
 }
 
-error_code_t  recv_feedback(SOCKET sender_socket, int* p_received_bytes, int* p_written_bytes, int* p_detected_errors_num, int* p_corrected_errors_num)
+error_code_t recv_feedback(SOCKET sender_socket, int* p_received_bytes, int* p_written_bytes, int* p_detected_and_corrected_errors_num)
 {
     error_code_t status = SUCCESS_CODE;
-    char* recv_buffer = NULL;
+    char* received_msg_buffer = NULL;
+    int msg_length;
+    int fields_converted; 
+    status = receive_message_from(sender_socket, &received_msg_buffer, &msg_length, NULL, NULL); 
 
-   // status = recv_message(sender_socket, &recv_buffer);
+    if (status == SUCCESS_CODE)
+    {
+        fields_converted = sscanf_s(received_msg_buffer, " %d %d %d", p_received_bytes, p_written_bytes, p_detected_and_corrected_errors_num);
 
-    if (status != SUCCESS_CODE)
-        return status;
+        if (fields_converted == EOF || fields_converted != 3)
+        {
+            print_error(STRING_PARSING_FAILED, __FILE__, __LINE__, __func__);
+            return STRING_PARSING_FAILED;
+       }
+    }
 
-  //  parse_feedback(recv_buffer, p_received_bytes, p_written_bytes, p_detected_errors_num, p_corrected_errors_num); 
-    // sscanf 
+    if (received_msg_buffer != NULL)
+        free(received_msg_buffer); 
 
     return status;
 }
