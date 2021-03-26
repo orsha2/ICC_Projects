@@ -81,10 +81,9 @@ sender_clean_up:
 /// inputs:  sender_socket, dest_ip, p_written_bytes, dest_port, file_name
 /// outputs: error_code_t 
 /// summary: Transfer the file to the channel.
-///          Opens the file and reads information to the end of the file.
-///          Sending the information activates the encoding according to the Hamming code.
-///          Each time reads a small chunk of informationand transmits it to the channel.
-///          At the end closes the file.
+///          Opens the file and reads bytes from it until the end of the file.
+///          Encodes the bytes according to Hamming Code and sends them to the channel.
+///
 error_code_t transfer_file(SOCKET sender_socket, char* dest_ip, int dest_port, char* file_name)
 {
     error_code_t status = SUCCESS_CODE;
@@ -129,20 +128,19 @@ transfer_file_clean_up:
     return status;
 }
 
-
 /// recv_feedback
 /// inputs:  sender_socket, p_received_bytes, p_written_bytes, p_detected_and_corrected_errors_num
 /// outputs: error_code_t 
-/// summary: 
+/// summary: receives and parses the feedback message from the channel
 /// 
 error_code_t recv_feedback(SOCKET sender_socket, int* p_received_bytes, int* p_written_bytes, int* p_detected_and_corrected_errors_num)
 {
     error_code_t status = SUCCESS_CODE;
     char* received_msg_buffer = NULL;
     int msg_length = 0;
-    int fields_converted = 0; 
+    int fields_converted = 0;
 
-    status = receive_message_from(sender_socket, &received_msg_buffer, &msg_length, NULL, NULL); 
+    status = receive_message_from(sender_socket, &received_msg_buffer, &msg_length, NULL, NULL);
 
     if (status == SUCCESS_CODE)
     {
@@ -152,22 +150,22 @@ error_code_t recv_feedback(SOCKET sender_socket, int* p_received_bytes, int* p_w
         {
             print_error(STRING_PARSING_FAILED, __FILE__, __LINE__, __func__);
             return STRING_PARSING_FAILED;
-       }
+        }
     }
 
     if (received_msg_buffer != NULL)
-        free(received_msg_buffer); 
+        free(received_msg_buffer);
 
     return status;
 }
 
-
 /// read_bytes_from_file
 /// inputs:  p_p_file, data_buffer, bytes_to_read, p_bytes_counter
 /// outputs: bool 
-/// summary: Performs reading of information from the file. Save the part we read in data_buffer.
-///          if the size of the information we read is smaller than bytes_to_read - return false.
-///          Otherwise - return true.
+/// summary: Performs reading of information from the file. Saves the part we read in data_buffer.
+///          if the size of the information we read is smaller than bytes_to_read - we reached the 
+///          end of the file and we return true. 
+///          Otherwise - return false.
 /// 
 bool read_bytes_from_file(FILE** p_p_file, char* data_buffer, int bytes_to_read, int* p_bytes_counter)
 {

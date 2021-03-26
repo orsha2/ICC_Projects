@@ -8,7 +8,6 @@
 
 #include "hamming_code_handler.h"
 
-
 // constants ------------------------------------------------------------------
 
 #define BITS_IN_BYTE 8
@@ -48,6 +47,13 @@ bool is_square(unsigned int n);
 
 // function implementations --------------------------------------------------- 
 
+/// encode_data
+/// inputs:  data_buffer, data_buffer_size, encoded_data_buffer, encoded_data_buffer_size
+/// outputs: -
+/// summary: Encodes the data_buffer according to the Hamming Code (15, 11, 3) 
+///			 and stores the result in encoded_data_buffer
+///			
+///
 void encode_data(char* data_buffer, unsigned int data_buffer_size, char* encoded_data_buffer, unsigned int encoded_data_buffer_size)
 {
 	unsigned int data_blocks_num = (int)(ceil((float)data_buffer_size * BITS_IN_BYTE / HAMMING_DATA_BLOCK_SIZE));
@@ -65,7 +71,12 @@ void encode_data(char* data_buffer, unsigned int data_buffer_size, char* encoded
 	}
 }
 
-
+/// decode_data
+/// inputs:  encoded_data_buffer, encoded_data_buffer_size, data_buffer, data_buffer_size
+/// outputs: unsigned int 
+/// summary: Decodes the encoded_data_buffer according to the Hamming Code (15, 11, 3) 
+///			 and stores the result in data_buffer, returns the number of errors that were detected and corrected 
+///
 unsigned int decode_data(char* encoded_data_buffer, unsigned int encoded_data_buffer_size, char* data_buffer, unsigned int data_buffer_size)
 {
 	unsigned int errors_num = 0;
@@ -89,7 +100,11 @@ unsigned int decode_data(char* encoded_data_buffer, unsigned int encoded_data_bu
 	return errors_num;
 }
 
-
+/// encode_block
+/// inputs:  data_block
+/// outputs: short
+/// summary: Encodes the block according to the Hamming Code (15, 11, 3) and returns the encoded block. 
+///
 short encode_block(short data_block)
 {
 	short encoded_data_block = 0; 
@@ -116,6 +131,12 @@ short encode_block(short data_block)
 	return encoded_data_block;
 }
 
+
+/// decode_block
+/// inputs:  encoded_data_block
+/// outputs: short
+/// summary: Decodes the block according to the Hamming Code (15, 11, 3) and returns the decoded block. 
+///
 short decode_block(short encoded_data_block)
 {
 	short data_block = 0;
@@ -129,7 +150,12 @@ short decode_block(short encoded_data_block)
 	return data_block;
 }
 
-
+/// check_and_correct_errors
+/// inputs:  p_encoded_data_block
+/// outputs: bool
+/// summary: Checks if there was an error in the encoded block (which is encoded with Hamming Code (15, 11 , 3)) 
+///		     If there was --> corrects the error and returns true, otherwise returns false. 
+/// 
 bool check_and_correct_errors(short* p_encoded_data_block)
 {
 	bool is_error = false;
@@ -150,7 +176,7 @@ bool check_and_correct_errors(short* p_encoded_data_block)
 			check_bit_value ^= (1 & (encoded_data_block >> DATA_BITS_FOR_CHECK_BIT[check_bit][data_bit]));
 		}
 
-		// check if error occured, if there is an error --> add to the error position calculation 
+		// check if error occurred , if there is an error --> add to the error position calculation 
 		if (check_bit_value != 0)
 			error_pos |= 1 << check_bit;
 		
@@ -167,7 +193,11 @@ bool check_and_correct_errors(short* p_encoded_data_block)
 	return is_error;
 }
 
-
+/// get_block
+/// inputs:  buffer, buffer_size, block_index, block_size
+/// outputs: short
+/// summary: Gets the block with index (block_index) and size (block_size) in the buffer. 
+/// 
 short get_block(char* buffer, unsigned int buffer_size, unsigned int block_index, unsigned int block_size)
 {
 	short block_value = 0;
@@ -178,13 +208,23 @@ short get_block(char* buffer, unsigned int buffer_size, unsigned int block_index
 	return block_value;
 }
 
+/// set_block
+/// inputs:  buffer, buffer_size, block_index, block_size,  new_block
+/// outputs: - 
+/// summary: Sets the block with index (block_index) and size (block_size) in the buffer to (new_block). 
+/// 
 void set_block(char* buffer, unsigned int buffer_size, unsigned int block_index, unsigned int block_size, short new_block)
 {
 	for (unsigned int block_offset = 0; block_offset < block_size; block_offset++)
 		set_bit(buffer, buffer_size, block_index * block_size + block_offset, 1 & (new_block >> block_offset));
 }
 
-
+/// get_bit
+/// inputs:  buffer, buffer_size, bit_index
+/// outputs: unsigned char
+/// summary: Gets the bit at bit_index in the buffer and returns it,
+///		     if bit_index is outside of the buffer, returns 0 
+/// 
 unsigned char get_bit(char* buffer, unsigned int buffer_size, unsigned int bit_index)
 {
 	unsigned int cell_index = bit_index / (BITS_IN_BYTE * sizeof(char));
@@ -198,6 +238,12 @@ unsigned char get_bit(char* buffer, unsigned int buffer_size, unsigned int bit_i
 	return bit_value;
 }
 
+/// set_bit
+/// inputs:  buffer, buffer_size, bit_index, new_value
+/// outputs: -
+/// summary: Sets the bit at bit_index in the buffer to new_value,
+///		     if bit_index is outside of the buffer, returns 
+/// 
 void set_bit(char* buffer, unsigned int buffer_size, unsigned int bit_index, unsigned char new_value)
 {
 	unsigned int cell_to_modify = bit_index / (BITS_IN_BYTE * sizeof(char));
@@ -212,6 +258,11 @@ void set_bit(char* buffer, unsigned int buffer_size, unsigned int bit_index, uns
 		buffer[cell_to_modify] |= 1 << offset_in_cell;
 }
 
+/// is_square
+/// inputs:  number
+/// outputs: bool 
+/// summary: returns whether the number is a power of 2
+/// 
 bool is_square(unsigned int n)
 {
 	return (n != 0) && ((n & (n - 1)) == 0); 

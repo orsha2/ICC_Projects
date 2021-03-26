@@ -84,19 +84,18 @@ channel_clean_up:
     return (int)status;
 }
 
-
 /// transfer_messages
 /// inputs:  channel_socket, receiver_ip, receiver_port, sender_ip,
 ///          p_sender_port, p_transferred_bytes, bit_flip_probability, p_flipped_bits_num
-/// outputs: error_code 
+/// outputs: error_code_t 
 /// summary: If the message is from the receiver - forward it to the sender.
 ///          If the message is from the sender then forward it to the receiver after
-///          reversing bits with a probability of bit_flip_probability.
+///          flipping some bits with a probability of bit_flip_probability / (2^16).
 /// 
 error_code_t transfer_messages(SOCKET channel_socket, char* receiver_ip, int receiver_port, char* sender_ip, int* p_sender_port, int* p_transferred_bytes, int bit_flip_probability, int* p_flipped_bits_num)
 {
-
     error_code_t status = SUCCESS_CODE;
+
     char source_ip[STR_IP_SIZE] = "";
     int source_port = 0;
 
@@ -119,16 +118,14 @@ error_code_t transfer_messages(SOCKET channel_socket, char* receiver_ip, int rec
             status = send_message_to(channel_socket, received_msg_buffer, msg_length, sender_ip, *p_sender_port);
             goto transfer_messages_exit;
         }
-        else
+      
+        // message is from sender, store its address
+        if (strlen(sender_ip) == 0 && (*p_sender_port) == 0)
         {
-            // message is from sender, store its address
-            if (strlen(sender_ip) == 0 && (*p_sender_port) == 0)
-            {
-                strcpy_s(sender_ip, STR_IP_SIZE + 1, source_ip);
-                *p_sender_port = source_port;
-            }
+            strcpy_s(sender_ip, STR_IP_SIZE + 1, source_ip);
+            *p_sender_port = source_port;
         }
-
+       
         (*p_flipped_bits_num) += insert_noise(received_msg_buffer, msg_length, bit_flip_probability);
 
         status = send_message_to(channel_socket, received_msg_buffer, msg_length, receiver_ip, receiver_port);
@@ -147,13 +144,13 @@ transfer_messages_exit:
     return status;
 }
 
-
 /// insert_noise
 /// inputs:  data, data_length, bit_flip_probability 
 /// outputs: int 
-/// summary: 
+/// summary: flips some bits in data array, according to the bit_flip_probability (= n), 
+///          the probability that a bit is flipped is bit_flip_probability/(2^16) = n/(2^16)
 /// 
-int insert_noise(char* data, unsigned int data_length,  unsigned int bit_flip_probability)
+int insert_noise(char* data, unsigned int data_length, unsigned int bit_flip_probability)
 {
     unsigned int cell_index, bit;
     unsigned int random_short = 0;
@@ -167,7 +164,7 @@ int insert_noise(char* data, unsigned int data_length,  unsigned int bit_flip_pr
 
             if (random_short < bit_flip_probability)
             {
-                data[cell_index] ^= 1 << bit;
+                data[cell_index] ^= (1 << bit);
                 flipped_bits_num++;
             }
         }
@@ -176,11 +173,10 @@ int insert_noise(char* data, unsigned int data_length,  unsigned int bit_flip_pr
     return flipped_bits_num;
 }
 
-
 /// get_random_short
 /// inputs:  - 
 /// outputs: unsigned short 
-/// summary: Create a 15-bit random number
+/// summary: returns a 16-bit random number
 /// 
 unsigned short get_random_short()
 {

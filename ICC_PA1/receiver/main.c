@@ -18,7 +18,7 @@ typedef enum _receiver_args_index {
 
 // constants ------------------------------------------------------------------
 
-#define CONSOLE_COMMAND_SIZE 20 
+#define CONSOLE_COMMAND_SIZE 100 
 #define FEEDBACK_MSG_MAX_SIZE 50 
 #define PRINTABLE_CHARS_THRESHOLD 128 
 
@@ -27,16 +27,21 @@ static const char* EXIT_COMMAND = "End";
 
 static const char* SUMMARY_MSG = "\nreceived: %d bytes\nwrote: %d bytes\ndetected & corrected %d error\n";
 
-static const int RECV_TIMEOUT = 100; // receive message timeout , in milliseconds 
+static const int RECV_TIMEOUT = 100; // receive message timeout, in milliseconds 
 
 // function declarations ------------------------------------------------------
 
+error_code_t init_receiver_socket(SOCKET *p_receiver_socket, int recv_timeout, int receiver_port);
+
 error_code_t recv_file(char* file_name, SOCKET receiver_socket, char* channel_ip, int* p_channel_port, int* p_total_bytes_received, int* p_total_bytes_written, int* p_detected_and_corrected_errors_num); 
 
-void get_user_input(char* console_command, unsigned int console_command_size);
-error_code_t write_bytes_to_file(FILE** p_p_file, char* file_buffer, int bytes_to_write, int* p_bytes_written);
+error_code_t write_bytes_to_file(FILE** p_p_file, char* data_buffer, int bytes_to_write, int* p_bytes_written);
 
 error_code_t send_feedback(SOCKET receiver_socket, char* channel_ip, int channel_port, int bytes_received, int bytes_written, int detected_and_corrected_errors_num);
+
+error_code_t recv_and_write_bytes(SOCKET receiver_socket, char* channel_ip, int* p_channel_port,
+                                  FILE* p_file, char** p_received_msg_buffer, int* msg_length,
+                                  char** p_data_buffer, int* p_data_buffer_size, int* p_bytes_written,  int* p_detected_and_corrected_errors_num);
 
 // function implementations ---------------------------------------------------
 
@@ -68,31 +73,10 @@ int main(int argc, char* argv[])
     if (status != SUCCESS_CODE)
         return status;
 
-    // init recv socket
-
-    status = initialize_socket(&receiver_socket);
+    status = init_receiver_socket(&receiver_socket, RECV_TIMEOUT, receiver_port);
 
     if (status != SUCCESS_CODE)
-        goto receiver_clean_up;
-
-    // set timeout for recv operation 
-    status = set_socket_operation_timeout(receiver_socket, SO_RCVTIMEO, RECV_TIMEOUT);
-
-    if (status != SUCCESS_CODE)
-        goto receiver_clean_up;
-
-    status = bind_to_port(receiver_socket, receiver_port);
-
-    if (status != SUCCESS_CODE)
-        goto receiver_clean_up;
-
-    //  -------
-
-
-
-
-
-
+        return status;
 
     // receive and write file from sender 
     status = recv_file(file_name, receiver_socket, channel_ip, &channel_port, &bytes_received, &bytes_written, &detected_and_corrected_errors_num);
@@ -106,6 +90,7 @@ int main(int argc, char* argv[])
     if (status != SUCCESS_CODE)
         goto receiver_clean_up;
 
+    // print the summary message 
     fprintf(stderr, SUMMARY_MSG, bytes_received, bytes_written, detected_and_corrected_errors_num);
 
 receiver_clean_up:
@@ -114,11 +99,46 @@ receiver_clean_up:
         closesocket(receiver_socket);
 
     deinitialize_winsock();
+
     return (int)status;
 }
 
+/// init_receiver_socket
+/// inputs:  p_receiver_socket, recv_timeout, receiver_port
+/// outputs: error_code_t
+/// summary: initializes the receiver's socket, binds it to port (receiver_port) 
+///          and sets its recv operation timeout 
+/// 
+error_code_t init_receiver_socket(SOCKET *p_receiver_socket, int recv_timeout, int receiver_port)
+{
+    error_code_t status = SUCCESS_CODE;
 
-error_code_t recv_file(char* file_name, SOCKET receiver_socket, char* channel_ip, int* p_channel_port, int* p_total_bytes_received, int* p_total_bytes_written, int* p_detected_and_corrected_errors_num)
+    status = initialize_socket(p_receiver_socket);
+
+    if (status != SUCCESS_CODE)
+        return status;
+
+    // set timeout for recv operation 
+    status = set_socket_operation_timeout(*p_receiver_socket, SO_RCVTIMEO, recv_timeout);
+
+    if (status != SUCCESS_CODE)
+        return status;
+
+    // bind the socket to the receiver's port 
+    status = bind_to_port(*p_receiver_socket, receiver_port);
+
+    return status;
+}
+
+/// recv_file
+/// inputs:  file_name, receiver_socket, channel_ip, p_channel_port, p_total_bytes_received,
+///          p_total_bytes_written,p_total_detected_and_corrected_errors_num
+/// outputs: error_code_t
+/// summary: Opens the file for writing. 
+///          Receives information from the channel, decodes it and writes to the file.
+///          If an interrupt is received - "END" from the keyboard - stops the file transfer and returns 
+/// 
+error_code_t recv_file(char* file_name, SOCKET receiver_socket, char* channel_ip, int* p_channel_port, int* p_total_bytes_received, int* p_total_bytes_written, int* p_total_detected_and_corrected_errors_num)
 {
     error_code_t status = SUCCESS_CODE;
 
@@ -129,7 +149,8 @@ error_code_t recv_file(char* file_name, SOCKET receiver_socket, char* channel_ip
     int msg_length = 0;
 
     int bytes_written = 0;
-    
+    int detected_and_corrected_errors_num = 0; 
+
     FILE* p_file; 
 
     fopen_s(&p_file, file_name, "wb");
@@ -143,46 +164,30 @@ error_code_t recv_file(char* file_name, SOCKET receiver_socket, char* channel_ip
     
     while (true)
     {
-        get_user_input(console_command, CONSOLE_COMMAND_SIZE);
+        // checks for user input 
+        if (_kbhit() != 0) 
+        {
+            scanf_s(" %s", console_command, CONSOLE_COMMAND_SIZE);
+            
+            // if user input is the "END" command --> exit the loop 
+            if (_stricmp(console_command, EXIT_COMMAND) == 0)
+                break; 
+        }
 
-        if (_stricmp(console_command, EXIT_COMMAND) == 0)
-            break;
+        // receive bytes from channel, decode them and write them to file 
+        status = recv_and_write_bytes(receiver_socket, channel_ip, p_channel_port, p_file, &received_msg_buffer, &msg_length, &data_buffer, &data_buffer_size, &bytes_written, &detected_and_corrected_errors_num);
 
-
-
-
-        // recv bytes and write to file 
-
-        status = receive_message_from(receiver_socket, &received_msg_buffer, &msg_length, channel_ip, p_channel_port);
-
+        // if recv timeout --> check again for user input and for messages from the channel 
         if (status == SOCKET_RECV_TIMEOUT)
             continue;
 
         if (status != SUCCESS_CODE)
             goto recv_file_clean_up;
 
-        data_buffer_size = (int)(floor((float)msg_length * HAMMING_DATA_BLOCK_SIZE / HAMMING_ENCODED_BLOCK_SIZE));
-
-        status = change_buffer_size(&data_buffer, data_buffer_size);
-
-        if (status != SUCCESS_CODE)
-            goto recv_file_clean_up;
-
-        (*p_detected_and_corrected_errors_num) += decode_data(received_msg_buffer, msg_length, data_buffer, data_buffer_size);
-
-        status = write_bytes_to_file(&p_file, data_buffer, data_buffer_size, &bytes_written);
-
-        if (status != SUCCESS_CODE)
-            goto recv_file_clean_up;
-
-        // ------
-
-
-
-
-       (*p_total_bytes_received) += msg_length;
-       (*p_total_bytes_written) += bytes_written;
-
+        // update the bytes received, bytes written and errors counters s
+        (*p_total_detected_and_corrected_errors_num) += detected_and_corrected_errors_num;
+        (*p_total_bytes_received) += msg_length;
+        (*p_total_bytes_written) += bytes_written; 
     }
 
 recv_file_clean_up: 
@@ -200,20 +205,54 @@ recv_file_clean_up:
         status = SUCCESS_CODE;
 
     return status; 
-
 }
 
-
-void get_user_input(char* console_command, unsigned int console_command_size)
+/// recv_and_write_bytes
+/// inputs:  receiver_socket, channel_ip, p_channel_port,
+///          p_file,p_received_msg_buffer, p_msg_length,
+///          p_data_buffer,p_data_buffer_size, p_bytes_written,
+///          p_detected_and_corrected_errors_num
+/// outputs: error_code_t
+/// summary: Receives information from the channel and decodes it according to Hammimg Code.
+///          After decoding, writes the information to the file.
+/// 
+error_code_t recv_and_write_bytes(SOCKET receiver_socket, char* channel_ip, int* p_channel_port, FILE* p_file, char** p_received_msg_buffer, int* p_msg_length, char** p_data_buffer, int* p_data_buffer_size, int* p_bytes_written, int* p_detected_and_corrected_errors_num)
 {
-    if (_kbhit() != 0)
-        scanf_s(" %s", console_command, console_command_size); 
+    error_code_t status = SUCCESS_CODE;
+    
+    // receive message from channel
+    status = receive_message_from(receiver_socket, p_received_msg_buffer, p_msg_length, channel_ip, p_channel_port);
+
+    if (status != SUCCESS_CODE)
+        return status;
+
+    // change the data buffer size according to the message received 
+    (*p_data_buffer_size) = (int)(floor((float)(*p_msg_length) * HAMMING_DATA_BLOCK_SIZE / HAMMING_ENCODED_BLOCK_SIZE));
+
+    status = change_buffer_size(p_data_buffer, *p_data_buffer_size);
+
+    if (status != SUCCESS_CODE)
+        return status;
+
+    // decodes the message (according to Hamming Code)
+    (*p_detected_and_corrected_errors_num) = decode_data(*p_received_msg_buffer, *p_msg_length, *p_data_buffer, *p_data_buffer_size);
+
+    // writes the decoded bytes to file 
+    status = write_bytes_to_file(&p_file, *p_data_buffer, *p_data_buffer_size, p_bytes_written);
+
+    if (status != SUCCESS_CODE)
+        return status; 
 }
 
-
-error_code_t write_bytes_to_file(FILE** p_p_file, char* file_buffer, int bytes_to_write, int* p_bytes_written)
+/// write_bytes_to_file
+/// inputs:  p_p_file, data_buffer, bytes_to_write, p_bytes_written
+/// outputs: error_code_t 
+/// summary: Writes data_buffer to *p_p_file
+///          If didn't write all the bytes (bytes_written is smaller than bytes_to_write) - return error 
+/// 
+error_code_t write_bytes_to_file(FILE** p_p_file, char* data_buffer, int bytes_to_write, int* p_bytes_written)
 {
-    *p_bytes_written = fwrite(file_buffer, sizeof(char), bytes_to_write, *p_p_file);
+    *p_bytes_written = fwrite(data_buffer, sizeof(char), bytes_to_write, *p_p_file);
 
     if (*p_bytes_written < bytes_to_write)
     {
@@ -224,7 +263,12 @@ error_code_t write_bytes_to_file(FILE** p_p_file, char* file_buffer, int bytes_t
     return SUCCESS_CODE;
 }
 
-
+/// send_feedback
+/// inputs:  receiver_socket, channel_ip, channel_port, bytes_received,
+///          bytes_written, detected_and_corrected_errors_num)
+/// outputs: error_code_t
+/// summary: Sends the feedback from receiver to the sender (through the channel) 
+/// 
 error_code_t send_feedback(SOCKET receiver_socket, char* channel_ip, int channel_port, int bytes_received, int bytes_written, int detected_and_corrected_errors_num)
 {
     error_code_t status = SUCCESS_CODE; 

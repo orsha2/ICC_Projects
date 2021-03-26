@@ -35,7 +35,7 @@ error_code_t check_winsock_result(int winsock_result, error_code_t error_code, c
 /// initialize_winsock
 /// inputs:  - 
 /// outputs: error code
-/// summary: Auxiliary function - configures WINSOCK ( initialize winsock ) 
+/// summary: configures WINSOCK ( initialize winsock ) 
 /// 
 error_code_t initialize_winsock()
 {
@@ -53,7 +53,7 @@ error_code_t initialize_winsock()
 /// deinitialize_winsock
 /// inputs:  - 
 /// outputs: error code
-/// summary: Auxiliary function - configures WINSOCK ( deinitialize winsock ) 
+/// summary: configures WINSOCK ( deinitialize winsock ) 
 /// 
 error_code_t deinitialize_winsock()
 {
@@ -66,10 +66,10 @@ error_code_t deinitialize_winsock()
 	return status;
 }
 
-/// initialize_client_socket
-/// inputs:  socket , server_ip , server_port
+/// initialize_socket
+/// inputs:  p_socket 
 /// outputs: error code
-/// summary: If the socket exists - connects to the server
+/// summary: initializes the socket 
 /// 
 error_code_t initialize_socket(SOCKET* p_socket)
 {
@@ -92,7 +92,7 @@ error_code_t initialize_socket(SOCKET* p_socket)
 /// set_socket_blocking_mode
 /// inputs:  socket , blocking_mode
 /// outputs: error code
-/// summary: Auxiliary function - configures socket blocking mode 
+/// summary: configures socket blocking mode 
 /// 
 error_code_t set_socket_blocking_mode(SOCKET my_socket, socket_blocking_mode blocking_mode)
 {
@@ -107,13 +107,14 @@ error_code_t set_socket_blocking_mode(SOCKET my_socket, socket_blocking_mode blo
 }
 
 /// set_socket_operation_timeout
-/// inputs:  socket , operation_type, timeout
+/// inputs:  socket, operation_type, timeout
 /// outputs: error code
-/// summary: Auxiliary function - configures socket operation timeout 
+/// summary: configures socket operation timeout 
 /// 
 error_code_t set_socket_operation_timeout(SOCKET my_socket, int operation_type, int timeout) 
 {
 	error_code_t status = SUCCESS_CODE;
+
 	int socket_result;
 	
 	status = set_socket_blocking_mode(my_socket, BLOCKING_MODE);
@@ -126,7 +127,7 @@ error_code_t set_socket_operation_timeout(SOCKET my_socket, int operation_type, 
 }
 
 /// bind_to_port
-/// inputs:  socket , socket_port
+/// inputs:  socket, socket_port
 /// outputs: error code
 /// summary: Performs a bind on the socket.
 ///          Checks whether it was successful or not and returns a message accordingly
@@ -146,9 +147,8 @@ error_code_t bind_to_port(SOCKET my_socket, int socket_port)
 	return status;
 }
 
-
 /// initialize_sockaddr
-/// inputs:  str_ip , port
+/// inputs:  str_ip, port
 /// outputs: struct sockaddr_in
 /// summary: Auxiliary function - configures sockaddr
 ///
@@ -220,7 +220,6 @@ error_code_t send_message_with_certain_length(SOCKET communication_socket, char*
 	return status;
 }
 
-
 /// receive_message
 /// inputs:  communication_socket ,  received_msg_buffer, p_received_msg_length
 /// outputs: error_code 
@@ -261,7 +260,6 @@ recv_msg_end:
 
 	return status;
 }
-
 
 /// send_message_with_certain_length
 /// inputs:  communication_socket , msg_buffer, msg_size
