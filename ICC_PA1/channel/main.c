@@ -1,4 +1,3 @@
-
 // include headers ------------------------------------------------------------
 
 #include <stdlib.h> 
@@ -29,8 +28,8 @@ error_code_t transfer_messages(SOCKET channel_socket, char* receiver_ip, int rec
 int insert_noise(char* data, unsigned int data_length, unsigned int bit_flip_probability);
 unsigned short get_random_short();
 
-
 // function implementations ---------------------------------------------------
+
 
 int main(int argc, char* argv[])
 {
@@ -85,6 +84,15 @@ channel_clean_up:
     return (int)status;
 }
 
+
+/// transfer_messages
+/// inputs:  channel_socket, receiver_ip, receiver_port, sender_ip,
+///          p_sender_port, p_transferred_bytes, bit_flip_probability, p_flipped_bits_num
+/// outputs: error_code 
+/// summary: If the message is from the receiver - forward it to the sender.
+///          If the message is from the sender then forward it to the receiver after
+///          reversing bits with a probability of bit_flip_probability.
+/// 
 error_code_t transfer_messages(SOCKET channel_socket, char* receiver_ip, int receiver_port, char* sender_ip, int* p_sender_port, int* p_transferred_bytes, int bit_flip_probability, int* p_flipped_bits_num)
 {
 
@@ -139,6 +147,12 @@ transfer_messages_exit:
     return status;
 }
 
+
+/// insert_noise
+/// inputs:  data, data_length, bit_flip_probability 
+/// outputs: int 
+/// summary: 
+/// 
 int insert_noise(char* data, unsigned int data_length,  unsigned int bit_flip_probability)
 {
     unsigned int cell_index, bit;
@@ -162,6 +176,12 @@ int insert_noise(char* data, unsigned int data_length,  unsigned int bit_flip_pr
     return flipped_bits_num;
 }
 
+
+/// get_random_short
+/// inputs:  - 
+/// outputs: unsigned short 
+/// summary: Create a 15-bit random number
+/// 
 unsigned short get_random_short()
 {
     unsigned short random_bit = rand() % 2;
@@ -169,8 +189,3 @@ unsigned short get_random_short()
 
     return ((random_15_bits << 1) | random_bit); 
 }
-
-
-
-
-

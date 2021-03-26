@@ -61,8 +61,6 @@ int main(int argc, char* argv[])
     if (status != SUCCESS_CODE)
         goto sender_clean_up;
 
-   // printf("done\n"); 
-
     status = recv_feedback(sender_socket, &received_bytes, &written_bytes, &detected_and_corrected_errors_num);
 
     if (status != SUCCESS_CODE)
@@ -79,6 +77,14 @@ sender_clean_up:
     return (int)status;
 }
 
+/// transfer_file
+/// inputs:  sender_socket, dest_ip, p_written_bytes, dest_port, file_name
+/// outputs: error_code_t 
+/// summary: Transfer the file to the channel.
+///          Opens the file and reads information to the end of the file.
+///          Sending the information activates the encoding according to the Hamming code.
+///          Each time reads a small chunk of informationand transmits it to the channel.
+///          At the end closes the file.
 error_code_t transfer_file(SOCKET sender_socket, char* dest_ip, int dest_port, char* file_name)
 {
     error_code_t status = SUCCESS_CODE;
@@ -123,6 +129,12 @@ transfer_file_clean_up:
     return status;
 }
 
+
+/// recv_feedback
+/// inputs:  sender_socket, p_received_bytes, p_written_bytes, p_detected_and_corrected_errors_num
+/// outputs: error_code_t 
+/// summary: 
+/// 
 error_code_t recv_feedback(SOCKET sender_socket, int* p_received_bytes, int* p_written_bytes, int* p_detected_and_corrected_errors_num)
 {
     error_code_t status = SUCCESS_CODE;
@@ -149,6 +161,14 @@ error_code_t recv_feedback(SOCKET sender_socket, int* p_received_bytes, int* p_w
     return status;
 }
 
+
+/// read_bytes_from_file
+/// inputs:  p_p_file, data_buffer, bytes_to_read, p_bytes_counter
+/// outputs: bool 
+/// summary: Performs reading of information from the file. Save the part we read in data_buffer.
+///          if the size of the information we read is smaller than bytes_to_read - return false.
+///          Otherwise - return true.
+/// 
 bool read_bytes_from_file(FILE** p_p_file, char* data_buffer, int bytes_to_read, int* p_bytes_counter)
 {
     *p_bytes_counter = fread(data_buffer, sizeof(char), bytes_to_read, *p_p_file);

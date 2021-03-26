@@ -1,4 +1,3 @@
-
 // include headers ------------------------------------------------------------
 #include <conio.h> 
 #include <stdlib.h> 
@@ -16,7 +15,6 @@ typedef enum _receiver_args_index {
     FILE_NAME_INDEX,
     RECEIVER_ARGS_NUM
 }receiver_args_index;
-
 
 // constants ------------------------------------------------------------------
 
@@ -41,6 +39,7 @@ error_code_t write_bytes_to_file(FILE** p_p_file, char* file_buffer, int bytes_t
 error_code_t send_feedback(SOCKET receiver_socket, char* channel_ip, int channel_port, int bytes_received, int bytes_written, int detected_and_corrected_errors_num);
 
 // function implementations ---------------------------------------------------
+
 
 int main(int argc, char* argv[])
 {
@@ -68,9 +67,6 @@ int main(int argc, char* argv[])
 
     if (status != SUCCESS_CODE)
         return status;
-
-
-
 
     // init recv socket
 
@@ -120,6 +116,7 @@ receiver_clean_up:
     deinitialize_winsock();
     return (int)status;
 }
+
 
 error_code_t recv_file(char* file_name, SOCKET receiver_socket, char* channel_ip, int* p_channel_port, int* p_total_bytes_received, int* p_total_bytes_written, int* p_detected_and_corrected_errors_num)
 {
@@ -206,11 +203,13 @@ recv_file_clean_up:
 
 }
 
+
 void get_user_input(char* console_command, unsigned int console_command_size)
 {
     if (_kbhit() != 0)
         scanf_s(" %s", console_command, console_command_size); 
 }
+
 
 error_code_t write_bytes_to_file(FILE** p_p_file, char* file_buffer, int bytes_to_write, int* p_bytes_written)
 {
@@ -224,6 +223,7 @@ error_code_t write_bytes_to_file(FILE** p_p_file, char* file_buffer, int bytes_t
 
     return SUCCESS_CODE;
 }
+
 
 error_code_t send_feedback(SOCKET receiver_socket, char* channel_ip, int channel_port, int bytes_received, int bytes_written, int detected_and_corrected_errors_num)
 {
