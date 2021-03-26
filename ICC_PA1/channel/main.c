@@ -26,8 +26,8 @@ static const char* SUMMARY_MSG = "sender: %s\nreceiver: %s\n%d bytes, flipped %d
 // function declarations ------------------------------------------------------
 
 error_code_t transfer_messages(SOCKET channel_socket, char* receiver_ip, int receiver_port, char* sender_ip, int* p_sender_port, int* p_transferred_bytes, int bit_flip_probability, int* p_flipped_bits_num); 
-int insert_noise(char* data, int data_length, int bit_flip_probability);
-short get_random_short();
+int insert_noise(char* data, unsigned int data_length, unsigned int bit_flip_probability);
+unsigned short get_random_short();
 
 
 // function implementations ---------------------------------------------------
@@ -81,7 +81,6 @@ channel_clean_up:
     if (channel_socket != INVALID_SOCKET)
         closesocket(channel_socket);
 
-    Sleep(10000);
     deinitialize_winsock();
     return (int)status;
 }
@@ -114,7 +113,6 @@ error_code_t transfer_messages(SOCKET channel_socket, char* receiver_ip, int rec
         }
         else
         {
-
             // message is from sender, store its address
             if (strlen(sender_ip) == 0 && (*p_sender_port) == 0)
             {
@@ -122,7 +120,6 @@ error_code_t transfer_messages(SOCKET channel_socket, char* receiver_ip, int rec
                 *p_sender_port = source_port;
             }
         }
-
 
         (*p_flipped_bits_num) += insert_noise(received_msg_buffer, msg_length, bit_flip_probability);
 
@@ -142,23 +139,11 @@ transfer_messages_exit:
     return status;
 }
 
-/*
-
-0 <= num <= 2^16-1
-num < n --> flip bit
-
---------------------------
-
-get 16  (2 bytes) --> and(16 (2 bytes)) 
-do it n times --> or --> bit is 1 with probability n/(2^16)
-
-*/
-
-int insert_noise(char* data, int data_length, int bit_flip_probability)
+int insert_noise(char* data, unsigned int data_length,  unsigned int bit_flip_probability)
 {
-    int cell_index, bit;
+    unsigned int cell_index, bit;
     unsigned int random_short = 0;
-    int flipped_bits_num = 0;
+    unsigned int flipped_bits_num = 0;
 
     for (cell_index = 0; cell_index < data_length; cell_index++)
     {
@@ -176,7 +161,6 @@ int insert_noise(char* data, int data_length, int bit_flip_probability)
 
     return flipped_bits_num;
 }
-
 
 unsigned short get_random_short()
 {

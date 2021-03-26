@@ -69,7 +69,7 @@ error_code_t check_args_num(int argc, int anticipated_args_num)
 }
 
 /// check_mem_alloc
-/// inputs:  ptr , file, line and function name where the error happened
+/// inputs:  ptr, file, line and function name where the error happened
 /// outputs: error_code
 /// summary: check ptr allocation & return to appropriate status 
 /// 

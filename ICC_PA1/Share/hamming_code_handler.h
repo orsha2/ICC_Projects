@@ -15,11 +15,4 @@ void encode_data(char* data_buffer, unsigned int data_buffer_size, char* encoded
 
 unsigned int decode_data(char* encoded_data_buffer, unsigned int encoded_data_buffer_size, char* data_buffer, unsigned int data_buffer_size);
 
-
-
-
-// ----------------------- REMOVE THIS ---------------------------
-void RUN_HAMMING_TEST();
-// ----------------------- REMOVE THIS ---------------------------
-
 #endif // HAMMING_CODE_HANDLER_H

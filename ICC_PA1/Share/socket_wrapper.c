@@ -304,7 +304,7 @@ error_code_t receive_message_with_certain_length(SOCKET communication_socket, ch
 }
 
 /// change_buffer_size
-/// inputs:  p_buffer , new_size
+/// inputs:  p_buffer, new_size
 /// outputs: error_code 
 /// summary: Auxiliary function - changes the size of a buffer by using realloc
 ///

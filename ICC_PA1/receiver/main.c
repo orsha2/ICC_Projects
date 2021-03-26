@@ -29,23 +29,16 @@ static const char* EXIT_COMMAND = "End";
 
 static const char* SUMMARY_MSG = "\nreceived: %d bytes\nwrote: %d bytes\ndetected & corrected %d error\n";
 
-static const char* FILE_TYPE_BIN = "bin"; 
-static const char* FILE_TYPE_TXT = "txt";
-
-static const int RECV_TIMEOUT = 100;
+static const int RECV_TIMEOUT = 100; // receive message timeout , in milliseconds 
 
 // function declarations ------------------------------------------------------
 
 error_code_t recv_file(char* file_name, SOCKET receiver_socket, char* channel_ip, int* p_channel_port, int* p_total_bytes_received, int* p_total_bytes_written, int* p_detected_and_corrected_errors_num); 
-error_code_t create_file(FILE** p_p_file, char* file_name); 
 
 void get_user_input(char* console_command, unsigned int console_command_size);
 error_code_t write_bytes_to_file(FILE** p_p_file, char* file_buffer, int bytes_to_write, int* p_bytes_written);
+
 error_code_t send_feedback(SOCKET receiver_socket, char* channel_ip, int channel_port, int bytes_received, int bytes_written, int detected_and_corrected_errors_num);
-bool check_if_txt_file(unsigned char* data_buffer, int data_buffer_size); 
-
-
-
 
 // function implementations ---------------------------------------------------
 
@@ -76,6 +69,11 @@ int main(int argc, char* argv[])
     if (status != SUCCESS_CODE)
         return status;
 
+
+
+
+    // init recv socket
+
     status = initialize_socket(&receiver_socket);
 
     if (status != SUCCESS_CODE)
@@ -92,11 +90,20 @@ int main(int argc, char* argv[])
     if (status != SUCCESS_CODE)
         goto receiver_clean_up;
 
+    //  -------
+
+
+
+
+
+
+
     // receive and write file from sender 
     status = recv_file(file_name, receiver_socket, channel_ip, &channel_port, &bytes_received, &bytes_written, &detected_and_corrected_errors_num);
 
-        if (status != SUCCESS_CODE)
-            return status;
+    if (status != SUCCESS_CODE)
+        return status;
+
     // send feedback back to the sender 
     status = send_feedback(receiver_socket, channel_ip, channel_port, bytes_received, bytes_written, detected_and_corrected_errors_num);
 
@@ -114,11 +121,6 @@ receiver_clean_up:
     return (int)status;
 }
 
-//---------------------------------
-
-
-//---------------------------------
-
 error_code_t recv_file(char* file_name, SOCKET receiver_socket, char* channel_ip, int* p_channel_port, int* p_total_bytes_received, int* p_total_bytes_written, int* p_detected_and_corrected_errors_num)
 {
     error_code_t status = SUCCESS_CODE;
@@ -130,18 +132,12 @@ error_code_t recv_file(char* file_name, SOCKET receiver_socket, char* channel_ip
     int msg_length = 0;
 
     int bytes_written = 0;
-
-    bool is_txt_file = true;
     
     FILE* p_file; 
-    char* full_file_name = NULL;
 
-    //status = get_full_file_name(file_name, FILE_TYPE_BIN);
+    fopen_s(&p_file, file_name, "wb");
 
-    //if (status != SUCCESS_CODE)
-    //    return status;
-
-    status = create_file(&p_file, file_name);
+    status = check_file_opening(p_file, __FILE__, __LINE__, __func__);
 
     if (status != SUCCESS_CODE)
         return status;
@@ -155,7 +151,10 @@ error_code_t recv_file(char* file_name, SOCKET receiver_socket, char* channel_ip
         if (strcmp(console_command, EXIT_COMMAND) == 0)
             break;
 
-        //else Sleep(KEYBOARD_POLLING_TIME);
+
+
+
+        // recv bytes and write to file 
 
         status = receive_message_from(receiver_socket, &received_msg_buffer, &msg_length, channel_ip, p_channel_port);
 
@@ -174,22 +173,21 @@ error_code_t recv_file(char* file_name, SOCKET receiver_socket, char* channel_ip
 
         (*p_detected_and_corrected_errors_num) += decode_data(received_msg_buffer, msg_length, data_buffer, data_buffer_size);
 
-        // CHECK FILE TYPE 
-        if(is_txt_file == true)
-            is_txt_file = check_if_txt_file((unsigned char*)data_buffer, data_buffer_size); 
-
         status = write_bytes_to_file(&p_file, data_buffer, data_buffer_size, &bytes_written);
 
         if (status != SUCCESS_CODE)
             goto recv_file_clean_up;
+
+        // ------
+
+
+
 
        (*p_total_bytes_received) += msg_length;
        (*p_total_bytes_written) += bytes_written;
 
     }
 
-    //status = rename_file(p_file_write, is_txt_file);
-    printf("is txt file: %d\n", is_txt_file); 
 recv_file_clean_up: 
 
     if (received_msg_buffer != NULL)
@@ -208,66 +206,10 @@ recv_file_clean_up:
 
 }
 
-error_code_t create_file(FILE** p_p_file, char* file_name)
-{
-    error_code_t status = SUCCESS_CODE; 
-
-   // FILE* p_file;
-
-    //int full_file_name_length = strlen(file_name) + 1 + strlen(FILE_TYPE_BIN) + 1;
-
-    //char* full_file_name = NULL;
-    //full_file_name = (char*)malloc(full_file_name_length);
-
-    //status = check_mem_alloc(full_file_name, __FILE__, __LINE__, __func__);
-
-    //if (status != SUCCESS_CODE)
-    //    return status; 
-
-    //snprintf(full_file_name, full_file_name_length, "%s.%s", file_name, FILE_TYPE_BIN); 
-
-    fopen_s(p_p_file, file_name, "wb");
-
-    status = check_file_opening(*p_p_file, __FILE__, __LINE__, __func__);
-
-   /* if (full_file_name != NULL)
-        free(full_file_name); */
-
-    return status;
-}
-
 void get_user_input(char* console_command, unsigned int console_command_size)
 {
     if (_kbhit() != 0)
-    {
-        scanf_s(" %s", console_command, console_command_size);
-        /*
-        char c = getchar();
-
-        // if there is enough space in the buffer, concatenate the char to the end of it 
-        if (strlen(console_command) < console_command_size)
-            sprintf_s(console_command, console_command_size, "%s%c", console_command, c);
-
-        // if char is new line, user finished command --> free buffer 
-        if (c == '\n')
-            *console_command = '\0';
-        */ 
-    }
-}
-
-/// check_if_txt_file
-/// inputs:  data_buffer,  data_buffer_size
-/// outputs: bool  
-/// summary: checks if argc is 
-/// 
-bool check_if_txt_file(unsigned char* data_buffer, int data_buffer_size)
-{
-    for (int i = 0; i < data_buffer_size; i++)
-    {
-        if (data_buffer[i] > PRINTABLE_CHARS_THRESHOLD)
-            return false;
-    }
-    return true; 
+        scanf_s(" %s", console_command, console_command_size); 
 }
 
 error_code_t write_bytes_to_file(FILE** p_p_file, char* file_buffer, int bytes_to_write, int* p_bytes_written)
@@ -295,5 +237,3 @@ error_code_t send_feedback(SOCKET receiver_socket, char* channel_ip, int channel
 
     return status;
 }
-
-//write_bytes_to_file(&p_file_write, file_buffer, bytes_counter); 

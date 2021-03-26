@@ -7,6 +7,7 @@
 #include "error_mgr.h"
 #include "socket_wrapper.h" 
 #include "hamming_code_handler.h"
+
 // enum -----------------------------------------------------------------------
 
 typedef enum _sender_args_index {
@@ -18,12 +19,10 @@ typedef enum _sender_args_index {
 
 // constants ------------------------------------------------------------------
 
-static const char* FEEDBACK_MSG = "received: %d bytes\nwritten: %d bytes\ndetected & corrected %d errors\n";
-
-// global variables -----------------------------------------------------------
-
+static const char* SUMMARY_MSG = "received: %d bytes\nwritten: %d bytes\ndetected & corrected %d errors\n";
 
 // function declarations ------------------------------------------------------
+
 error_code_t transfer_file(SOCKET sender_socket, char* dest_ip, int dest_port, char* file_name);
 bool read_bytes_from_file(FILE** p_p_file, char* data_buffer, int bytes_to_read, int* p_bytes_counter); 
 error_code_t recv_feedback(SOCKET sender_socket, int* p_received_bytes, int* p_written_bytes, int* p_detected_and_corrected_errors_num); 
@@ -32,13 +31,6 @@ error_code_t recv_feedback(SOCKET sender_socket, int* p_received_bytes, int* p_w
 
 int main(int argc, char* argv[])
 {
-    // ----------------------- REMOVE THIS ---------------------------
-    //RUN_HAMMING_TEST();
-    //exit(0); 
-    // ----------------------- REMOVE THIS ---------------------------
-
-
-
     error_code_t status = SUCCESS_CODE;
     status = check_args_num(argc, SENDER_ARGS_NUM);
 
@@ -69,14 +61,14 @@ int main(int argc, char* argv[])
     if (status != SUCCESS_CODE)
         goto sender_clean_up;
 
-    printf("done\n"); 
+   // printf("done\n"); 
 
     status = recv_feedback(sender_socket, &received_bytes, &written_bytes, &detected_and_corrected_errors_num);
 
     if (status != SUCCESS_CODE)
         goto sender_clean_up;
 
-     fprintf(stderr, FEEDBACK_MSG, received_bytes, written_bytes, detected_and_corrected_errors_num);
+     fprintf(stderr, SUMMARY_MSG, received_bytes, written_bytes, detected_and_corrected_errors_num);
 
 sender_clean_up:
 
@@ -84,8 +76,6 @@ sender_clean_up:
         closesocket(sender_socket);
 
     deinitialize_winsock();
-
-    Sleep(100000); 
     return (int)status;
 }
 
@@ -137,8 +127,9 @@ error_code_t recv_feedback(SOCKET sender_socket, int* p_received_bytes, int* p_w
 {
     error_code_t status = SUCCESS_CODE;
     char* received_msg_buffer = NULL;
-    int msg_length;
-    int fields_converted; 
+    int msg_length = 0;
+    int fields_converted = 0; 
+
     status = receive_message_from(sender_socket, &received_msg_buffer, &msg_length, NULL, NULL); 
 
     if (status == SUCCESS_CODE)
@@ -158,7 +149,6 @@ error_code_t recv_feedback(SOCKET sender_socket, int* p_received_bytes, int* p_w
     return status;
 }
 
-
 bool read_bytes_from_file(FILE** p_p_file, char* data_buffer, int bytes_to_read, int* p_bytes_counter)
 {
     *p_bytes_counter = fread(data_buffer, sizeof(char), bytes_to_read, *p_p_file);
@@ -168,92 +158,3 @@ bool read_bytes_from_file(FILE** p_p_file, char* data_buffer, int bytes_to_read,
 
     return true;
 }
-
-//error_code_t send_bits(char* file_buffer, int* p_bytes_counter)
-
-
-/*
-do {
-
-
-    status = set_socket_operation_timeout(client_socket, SO_RCVTIMEO, DEFAULT_WAIT_TIME);
-
-    if (status != SUCCESS_CODE)
-        goto client_clean_up;
-
-    status = handle_client_communication(client_socket);
-
-    if (status != SOCKET_RECV_TIMEOUT && status != SOCKET_SEND_FAILED
-        && status != SOCKET_CONNECTION_RESET && status != CLIENT_CONNECTION_DENIED)
-        goto client_clean_up;
-
-    shutdown_and_close_connection(client_socket);
-
-    if (status == CLIENT_CONNECTION_DENIED)
-        msg_to_client = MSG_CONNECTION_TO_SERVER_DENIED;
-
-    else msg_to_client = MSG_CONNECTION_TO_SERVER_FAILED;
-
-    printf(msg_to_client, server_ip, server_port);
-    scanf_s(" %d", &current_client_choice);
-
-} while (current_client_choice == CONNECT_TO_SERVER);
-*/
-
-/*
-/// handle_client_communication
-/// inputs:  client_socket 
-/// outputs: error_code
-/// summary:  Performs the sending of messages for the client. 
-///           sends a message and receives a message.
-///           Depending on the type of message we will know whether to send twice or once
-/// 
-error_code_t handle_client_communication(SOCKET client_socket)
-{
-    error_code_t status = SUCCESS_CODE;
-
-    message message_from_server = { 0 };
-    message client_message = { 0 };
-
-    char client_message_string[MAX_MSG_SIZE + 1];
-
-    char* received_msg = NULL;
-    int received_msg_length;
-
-    status = send_client_request(client_socket, client_message_string, &client_message, client_name);
-
-    while (status != SOCKET_CONNECTION_CLOSED && client_message.current_msg_type != CLIENT_DISCONNECT)
-    {
-        status = receive_message(client_socket, &received_msg, &received_msg_length);
-
-        if (status != SUCCESS_CODE)
-            goto client_communication_clean_up;
-
-        // handle server message and get response for server
-        status = handle_server_message(received_msg, client_message_string, &message_from_server, &client_message);
-
-        if (status != SUCCESS_CODE)
-            goto client_communication_clean_up;
-
-        status = set_socket_timeout_parameter(client_socket, &client_message);
-
-        if (status != SUCCESS_CODE)
-            goto client_communication_clean_up;
-
-        if (server_sends_additional_message(&message_from_server))
-            continue;
-
-        status = send_message(client_socket, client_message_string, strlen(client_message_string));
-
-        if (status != SUCCESS_CODE)
-            goto client_communication_clean_up;
-    }
-
-client_communication_clean_up:
-
-    if (received_msg != NULL)
-        free(received_msg);
-
-    return status;
-}
-*/
