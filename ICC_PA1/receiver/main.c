@@ -143,12 +143,12 @@ error_code_t recv_file(char* file_name, SOCKET receiver_socket, char* channel_ip
         return status;
 
     char console_command[CONSOLE_COMMAND_SIZE+1] = { 0 };
-
+    
     while (true)
     {
         get_user_input(console_command, CONSOLE_COMMAND_SIZE);
 
-        if (strcmp(console_command, EXIT_COMMAND) == 0)
+        if (_stricmp(console_command, EXIT_COMMAND) == 0)
             break;
 
 
