@@ -68,3 +68,4 @@ dkms.conf
 *.docx
 *.testlog
 *.manifest
+*.zip
